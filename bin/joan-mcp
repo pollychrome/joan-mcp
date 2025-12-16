@@ -1,0 +1,16 @@
+#!/usr/bin/env node
+
+// Entry point for joan-mcp CLI
+// This file is referenced in package.json "bin" field
+
+import { fileURLToPath } from 'node:url';
+import { dirname, join } from 'node:path';
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
+const cliPath = join(__dirname, '..', 'dist', 'cli.js');
+
+import(cliPath).catch((err) => {
+  console.error('Failed to load Joan MCP CLI:', err.message);
+  console.error('Make sure to run "npm run build" first.');
+  process.exit(1);
+});

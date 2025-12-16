@@ -1,0 +1,132 @@
+/**
+ * Joan MCP Server - Entry Point
+ *
+ * This MCP server enables AI assistants like Claude to interact with
+ * Joan productivity app features including Projects, Tasks, Goals,
+ * Milestones, and Notes.
+ */
+
+import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
+import { loadConfig } from './config.js';
+import { JoanApiClient } from './client/api-client.js';
+import { registerAllTools } from './tools/index.js';
+import { registerAllResources } from './resources/index.js';
+
+const SERVER_NAME = 'joan-mcp';
+const SERVER_VERSION = '1.0.0';
+
+/**
+ * Server instructions that describe Joan MCP to AI assistants.
+ * These are automatically sent to clients during initialization.
+ */
+const SERVER_INSTRUCTIONS = `
+Joan is a productivity application for managing projects, tasks, goals, milestones, and notes. This MCP server enables you to interact with the user's Joan data.
+
+## Available Tools (Write Operations)
+
+### Tasks
+- create_task: Create a new task in a project (requires project_id, title; optional: description, status, priority, due_date, column_id)
+- update_task: Update task properties (title, description, status, priority, due_date, column_id)
+- complete_task: Mark a task as completed
+- delete_task: Delete a task
+
+### Projects
+- create_project: Create a new project (name required; optional: description, status, start_date, end_date)
+- update_project: Update project properties
+
+### Milestones
+- create_milestone: Create a milestone in a project (requires project_id, title; optional: description, target_date)
+- update_milestone: Update milestone details
+- delete_milestone: Delete a milestone
+- link_tasks_to_milestone: Associate tasks with a milestone
+- unlink_task_from_milestone: Remove a task from a milestone
+
+### Goals
+- create_goal: Create a new goal (title required; optional: description, target_date, status)
+- update_goal: Update goal progress or details
+- delete_goal: Delete a goal
+- link_task_to_goal: Link a task to track goal progress
+- unlink_task_from_goal: Remove task from goal tracking
+
+### Notes
+- create_note: Create a new note (title required; optional: content, tags)
+- update_note: Update note content or metadata
+- delete_note: Delete a note
+
+## Available Resources (Read Operations)
+
+Use these URIs to read Joan data:
+- joan://projects - List all projects
+- joan://projects/{id} - Get project details with stats
+- joan://projects/{id}/tasks - Get tasks in a project
+- joan://projects/{id}/milestones - Get project milestones
+- joan://projects/{id}/columns - Get kanban columns
+- joan://tasks - List all tasks
+- joan://tasks/{id} - Get task details
+- joan://goals - List all goals
+- joan://goals/{id} - Get goal with linked tasks
+- joan://notes - List all notes
+- joan://notes/{id} - Get note details
+
+## Usage Guidelines
+
+1. When the user mentions tasks, projects, goals, or productivity tracking, consider using Joan tools
+2. Always read relevant resources first to get context (e.g., list projects before creating a task)
+3. Task status values: "todo", "in_progress", "done", "blocked"
+4. Task priority values: "low", "medium", "high", "urgent"
+5. Project status values: "planning", "active", "on_hold", "completed", "archived"
+6. Goal status values: "not_started", "in_progress", "completed", "abandoned"
+`.trim();
+
+
+/**
+ * Start the MCP server
+ */
+export async function startServer(): Promise<void> {
+  // Load configuration
+  const config = await loadConfig();
+
+  // Initialize API client
+  const apiClient = new JoanApiClient({
+    baseUrl: config.apiUrl,
+    authToken: config.authToken,
+  });
+
+  // Verify auth token works
+  try {
+    await apiClient.getCurrentUser();
+  } catch (error) {
+    console.error('Failed to verify authentication. Please check your token.');
+    console.error('Run "joan-mcp login" to authenticate or set JOAN_AUTH_TOKEN.');
+    process.exit(1);
+  }
+
+  // Create MCP server with instructions for AI assistants
+  const server = new McpServer(
+    {
+      name: SERVER_NAME,
+      version: SERVER_VERSION,
+    },
+    {
+      instructions: SERVER_INSTRUCTIONS,
+    }
+  );
+
+  // Register all tools (write operations)
+  registerAllTools(server, apiClient);
+
+  // Register all resources (read operations)
+  registerAllResources(server, apiClient);
+
+  // Connect via stdio transport
+  const transport = new StdioServerTransport();
+  await server.connect(transport);
+
+  // Log to stderr so it doesn't interfere with MCP protocol
+  console.error(`${SERVER_NAME} v${SERVER_VERSION} started`);
+}
+
+// Export for CLI
+export { loadConfig } from './config.js';
+export { JoanApiClient } from './client/api-client.js';

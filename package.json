@@ -1,0 +1,52 @@
+{
+  "name": "@pollychrome/joan-mcp",
+  "version": "1.0.0",
+  "description": "MCP server for Joan productivity app - enables AI assistants to manage projects, tasks, goals, milestones, and notes",
+  "type": "module",
+  "main": "dist/index.js",
+  "bin": {
+    "joan-mcp": "./bin/joan-mcp"
+  },
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsx watch src/cli.ts serve",
+    "start": "node dist/cli.js serve",
+    "typecheck": "tsc --noEmit",
+    "login": "tsx src/cli.ts login",
+    "status": "tsx src/cli.ts status"
+  },
+  "keywords": [
+    "mcp",
+    "model-context-protocol",
+    "joan",
+    "productivity",
+    "ai",
+    "claude"
+  ],
+  "author": "Alex Benson",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/pollychrome/joan-mcp.git"
+  },
+  "homepage": "https://github.com/pollychrome/joan-mcp#readme",
+  "bugs": {
+    "url": "https://github.com/pollychrome/joan-mcp/issues"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.0.0",
+    "zod": "^3.23.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "tsx": "^4.0.0",
+    "typescript": "^5.7.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "files": [
+    "dist",
+    "bin"
+  ]
+}
