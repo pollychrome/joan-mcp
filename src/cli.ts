@@ -207,86 +207,54 @@ async function serve(): Promise<void> {
 }
 
 /**
- * Get the path to this CLI script for Claude Code config
- */
-function getCliPath(): string {
-  // Get the directory where this script is located
-  const scriptPath = process.argv[1];
-
-  // If running via tsx, we need to find the actual source file
-  if (scriptPath.includes('node_modules/.bin/tsx') || scriptPath.includes('tsx')) {
-    // We're running in dev mode, use the src path
-    const srcDir = new URL('.', import.meta.url).pathname;
-    return `${srcDir}cli.ts`;
-  }
-
-  // Running compiled, use the dist path
-  return scriptPath;
-}
-
-/**
- * Configure Claude Code to use Joan MCP
+ * Configure Claude Code to use Joan MCP using the claude CLI
  */
 async function configureClaudeCode(): Promise<boolean> {
-  const { readFile, writeFile, mkdir } = await import('node:fs/promises');
-  const { homedir } = await import('node:os');
-  const { join, dirname } = await import('node:path');
-  const { existsSync } = await import('node:fs');
+  const { execSync, spawnSync } = await import('node:child_process');
 
-  const claudeSettingsPath = join(homedir(), '.claude', 'settings.json');
-  const cliPath = getCliPath();
-
-  // Determine how to run the CLI
-  let command: string;
-  let args: string[];
-
-  if (cliPath.endsWith('.ts')) {
-    // Development mode - use npx tsx
-    command = 'npx';
-    args = ['tsx', cliPath, 'serve'];
-  } else {
-    // Production mode - use node directly
-    command = 'node';
-    args = [cliPath, 'serve'];
+  // Check if Claude CLI is available
+  try {
+    execSync('claude --version', { stdio: 'pipe' });
+  } catch {
+    console.log('\n⚠ Claude CLI not found.');
+    console.log('\nManual configuration required:');
+    console.log('  Run: claude mcp add joan -s user -- joan-mcp serve');
+    console.log('\nOr install Claude Code first: https://claude.ai/code');
+    return false;
   }
 
-  const joanConfig = {
-    command,
-    args,
-  };
-
+  // Check if joan MCP is already configured
   try {
-    let settings: Record<string, unknown> = {};
+    const result = spawnSync('claude', ['mcp', 'list'], { encoding: 'utf8' });
+    if (result.stdout && result.stdout.includes('joan')) {
+      console.log('\n✓ Joan MCP already configured in Claude Code');
+      return true;
+    }
+  } catch {
+    // Continue with add
+  }
 
-    // Read existing settings if they exist
-    if (existsSync(claudeSettingsPath)) {
-      const content = await readFile(claudeSettingsPath, 'utf8');
-      settings = JSON.parse(content);
-    } else {
-      // Create directory if it doesn't exist
-      await mkdir(dirname(claudeSettingsPath), { recursive: true });
+  // Use claude mcp add to configure Joan MCP globally (user scope)
+  try {
+    const result = spawnSync(
+      'claude',
+      ['mcp', 'add', 'joan', '-s', 'user', '--', 'joan-mcp', 'serve'],
+      { encoding: 'utf8', stdio: 'pipe' }
+    );
+
+    if (result.status !== 0) {
+      throw new Error(result.stderr || 'Unknown error');
     }
 
-    // Add or update mcpServers
-    if (!settings.mcpServers) {
-      settings.mcpServers = {};
-    }
-
-    (settings.mcpServers as Record<string, unknown>).joan = joanConfig;
-
-    // Write updated settings
-    await writeFile(claudeSettingsPath, JSON.stringify(settings, null, 2), 'utf8');
-
-    console.log(`\n✓ Claude Code configured`);
-    console.log(`  Settings: ${claudeSettingsPath}`);
-    console.log(`  Command: ${command} ${args.join(' ')}`);
+    console.log('\n✓ Claude Code configured');
+    console.log('  Joan MCP added to user config (available in all projects)');
+    console.log('  Command: joan-mcp serve');
 
     return true;
   } catch (error) {
     console.error(`\n⚠ Could not configure Claude Code automatically: ${(error as Error).message}`);
     console.log('\nManual configuration:');
-    console.log(`Add this to ${claudeSettingsPath}:`);
-    console.log(JSON.stringify({ mcpServers: { joan: joanConfig } }, null, 2));
+    console.log('  Run: claude mcp add joan -s user -- joan-mcp serve');
     return false;
   }
 }
@@ -356,7 +324,7 @@ async function main(): Promise<void> {
     case 'version':
     case '--version':
     case '-v':
-      console.log('joan-mcp v1.0.0');
+      console.log('joan-mcp v1.0.2');
       break;
     default:
       console.error(`Unknown command: ${command}`);

@@ -85,18 +85,13 @@ No manual documentation needed in your CLAUDE.md files.
 
 ### Manual Configuration (Optional)
 
-The `init` command configures this automatically, but if needed, add to `~/.claude/settings.json`:
+The `init` command configures this automatically, but if needed, run:
 
-```json
-{
-  "mcpServers": {
-    "joan": {
-      "command": "npx",
-      "args": ["@pollychrome/joan-mcp", "serve"]
-    }
-  }
-}
+```bash
+claude mcp add joan -s user -- joan-mcp serve
 ```
+
+This adds Joan MCP to your user config, making it available in all projects.
 
 ### Troubleshooting
 
