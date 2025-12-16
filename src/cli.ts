@@ -38,6 +38,11 @@ Examples:
   joan-mcp serve      # Start MCP server
   joan-mcp            # Same as 'joan-mcp serve'
 
+Quick Start (after npm install -g @pollychrome/joan-mcp):
+  1. joan-mcp init     # Authenticate and configure Claude Code
+  2. Restart Claude Code
+  3. Ask Claude: "Show me my Joan projects"
+
 Environment Variables:
   JOAN_AUTH_TOKEN   JWT token for authentication (alternative to login)
   JOAN_API_URL      API base URL (default: production)
@@ -208,9 +213,26 @@ async function serve(): Promise<void> {
 
 /**
  * Configure Claude Code to use Joan MCP using the claude CLI
+ *
+ * Uses npx for cross-platform compatibility and automatic package resolution.
+ * This follows MCP server distribution best practices as documented at:
+ * - https://modelcontextprotocol.io/docs/concepts/architecture
+ * - https://code.claude.com/docs/en/mcp
  */
 async function configureClaudeCode(): Promise<boolean> {
   const { execSync, spawnSync } = await import('node:child_process');
+
+  // Platform-aware command construction
+  // Windows requires cmd /c wrapper for npx execution
+  // See: https://code.claude.com/docs/en/mcp (Windows-specific requirements)
+  const isWindows = process.platform === 'win32';
+  const mcpCommand = isWindows
+    ? ['mcp', 'add', 'joan', '-s', 'user', '--', 'cmd', '/c', 'npx', '-y', '@pollychrome/joan-mcp', 'serve']
+    : ['mcp', 'add', 'joan', '-s', 'user', '--', 'npx', '-y', '@pollychrome/joan-mcp', 'serve'];
+
+  const manualCommand = isWindows
+    ? 'claude mcp add joan -s user -- cmd /c npx -y @pollychrome/joan-mcp serve'
+    : 'claude mcp add joan -s user -- npx -y @pollychrome/joan-mcp serve';
 
   // Check if Claude CLI is available
   try {
@@ -218,7 +240,7 @@ async function configureClaudeCode(): Promise<boolean> {
   } catch {
     console.log('\n⚠ Claude CLI not found.');
     console.log('\nManual configuration required:');
-    console.log('  Run: claude mcp add joan -s user -- joan-mcp serve');
+    console.log(`  Run: ${manualCommand}`);
     console.log('\nOr install Claude Code first: https://claude.ai/code');
     return false;
   }
@@ -235,10 +257,14 @@ async function configureClaudeCode(): Promise<boolean> {
   }
 
   // Use claude mcp add to configure Joan MCP globally (user scope)
+  // Uses npx -y for:
+  //   - Automatic package resolution (works without global install)
+  //   - Always fetches latest version if not cached
+  //   - -y flag ensures non-interactive execution (critical for MCP server startup)
   try {
     const result = spawnSync(
       'claude',
-      ['mcp', 'add', 'joan', '-s', 'user', '--', 'joan-mcp', 'serve'],
+      mcpCommand,
       { encoding: 'utf8', stdio: 'pipe' }
     );
 
@@ -248,13 +274,13 @@ async function configureClaudeCode(): Promise<boolean> {
 
     console.log('\n✓ Claude Code configured');
     console.log('  Joan MCP added to user config (available in all projects)');
-    console.log('  Command: joan-mcp serve');
+    console.log('  Command: npx -y @pollychrome/joan-mcp serve');
 
     return true;
   } catch (error) {
     console.error(`\n⚠ Could not configure Claude Code automatically: ${(error as Error).message}`);
     console.log('\nManual configuration:');
-    console.log('  Run: claude mcp add joan -s user -- joan-mcp serve');
+    console.log(`  Run: ${manualCommand}`);
     return false;
   }
 }
