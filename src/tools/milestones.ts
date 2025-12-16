@@ -8,6 +8,76 @@ import type { JoanApiClient } from '../client/api-client.js';
 import { formatErrorForMcp } from '../utils/errors.js';
 
 export function registerMilestoneTools(server: McpServer, client: JoanApiClient): void {
+  // List Milestones (Read)
+  server.tool(
+    'list_milestones',
+    'List all milestones for a project in Joan. Returns milestone IDs, names, status, target dates, and progress.',
+    {
+      project_id: z.string().uuid().describe('Project ID to list milestones for'),
+      status: z.enum(['upcoming', 'in_progress', 'completed', 'missed']).optional().describe('Filter by milestone status'),
+      include_tasks: z.boolean().optional().describe('Include linked tasks in response'),
+    },
+    async (input) => {
+      try {
+        const milestones = await client.listMilestones(input.project_id, {
+          status: input.status,
+          include_tasks: input.include_tasks,
+        });
+
+        if (milestones.length === 0) {
+          return {
+            content: [{
+              type: 'text',
+              text: `No milestones found for project ${input.project_id}.`,
+            }],
+          };
+        }
+
+        const milestoneList = milestones.map(m => {
+          let info = `- ${m.name} (ID: ${m.id})`;
+          if (m.status) info += ` [${m.status}]`;
+          if (m.target_date) info += ` - Target: ${m.target_date}`;
+          if (m.progress !== undefined) info += ` - Progress: ${m.progress}%`;
+          if (m.description) info += `\n  ${m.description}`;
+          return info;
+        }).join('\n');
+
+        return {
+          content: [{
+            type: 'text',
+            text: `Found ${milestones.length} milestone(s):\n\n${milestoneList}`,
+          }],
+        };
+      } catch (error) {
+        return { content: formatErrorForMcp(error) };
+      }
+    }
+  );
+
+  // Get Milestone Details (Read)
+  server.tool(
+    'get_milestone',
+    'Get detailed information about a specific milestone including linked tasks.',
+    {
+      project_id: z.string().uuid().describe('Project ID'),
+      milestone_id: z.string().uuid().describe('Milestone ID to retrieve'),
+    },
+    async (input) => {
+      try {
+        const milestone = await client.getMilestone(input.project_id, input.milestone_id);
+
+        return {
+          content: [{
+            type: 'text',
+            text: JSON.stringify(milestone, null, 2),
+          }],
+        };
+      } catch (error) {
+        return { content: formatErrorForMcp(error) };
+      }
+    }
+  );
+
   // Create Milestone
   server.tool(
     'create_milestone',

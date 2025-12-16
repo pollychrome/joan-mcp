@@ -23,20 +23,26 @@ const SERVER_VERSION = '1.0.0';
 const SERVER_INSTRUCTIONS = `
 Joan is a productivity application for managing projects, tasks, goals, milestones, and notes. This MCP server enables you to interact with the user's Joan data.
 
-## Available Tools (Write Operations)
-
-### Tasks
-- create_task: Create a new task in a project (requires project_id, title; optional: description, status, priority, due_date, column_id)
-- update_task: Update task properties (title, description, status, priority, due_date, column_id)
-- complete_task: Mark a task as completed
-- delete_task: Delete a task
+## Available Tools
 
 ### Projects
+- list_projects: List all projects (optional: filter by status)
+- get_project: Get detailed info about a specific project
 - create_project: Create a new project (name required; optional: description, status, start_date, end_date)
 - update_project: Update project properties
 
+### Tasks
+- list_tasks: List tasks (optional: filter by project_id, status)
+- get_task: Get detailed task info including subtasks
+- create_task: Create a new task (requires title; optional: project_id, description, status, priority, due_date, column_id)
+- update_task: Update task properties
+- complete_task: Mark a task as completed
+- delete_task: Delete a task
+
 ### Milestones
-- create_milestone: Create a milestone in a project (requires project_id, title; optional: description, target_date)
+- list_milestones: List milestones for a project (requires project_id; optional: filter by status)
+- get_milestone: Get detailed milestone info with linked tasks
+- create_milestone: Create a milestone (requires project_id, name; optional: description, target_date)
 - update_milestone: Update milestone details
 - delete_milestone: Delete a milestone
 - link_tasks_to_milestone: Associate tasks with a milestone
@@ -54,29 +60,15 @@ Joan is a productivity application for managing projects, tasks, goals, mileston
 - update_note: Update note content or metadata
 - delete_note: Delete a note
 
-## Available Resources (Read Operations)
-
-Use these URIs to read Joan data:
-- joan://projects - List all projects
-- joan://projects/{id} - Get project details with stats
-- joan://projects/{id}/tasks - Get tasks in a project
-- joan://projects/{id}/milestones - Get project milestones
-- joan://projects/{id}/columns - Get kanban columns
-- joan://tasks - List all tasks
-- joan://tasks/{id} - Get task details
-- joan://goals - List all goals
-- joan://goals/{id} - Get goal with linked tasks
-- joan://notes - List all notes
-- joan://notes/{id} - Get note details
-
 ## Usage Guidelines
 
-1. When the user mentions tasks, projects, goals, or productivity tracking, consider using Joan tools
-2. Always read relevant resources first to get context (e.g., list projects before creating a task)
-3. Task status values: "todo", "in_progress", "done", "blocked"
-4. Task priority values: "low", "medium", "high", "urgent"
+1. When the user mentions tasks, projects, goals, or productivity tracking, use Joan tools
+2. Use list_projects first to find project IDs, then list_milestones/list_tasks for details
+3. Task status values: "todo", "in_progress", "done", "cancelled"
+4. Task priority values: "none", "low", "medium", "high"
 5. Project status values: "planning", "active", "on_hold", "completed", "archived"
-6. Goal status values: "not_started", "in_progress", "completed", "abandoned"
+6. Milestone status values: "upcoming", "in_progress", "completed", "missed"
+7. Goal status values: "not_started", "in_progress", "completed", "abandoned"
 `.trim();
 
 

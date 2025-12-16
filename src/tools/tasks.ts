@@ -9,6 +9,86 @@ import { formatErrorForMcp } from '../utils/errors.js';
 import { formatTask, formatTaskInput } from '../utils/converters.js';
 
 export function registerTaskTools(server: McpServer, client: JoanApiClient): void {
+  // List Tasks (Read)
+  server.tool(
+    'list_tasks',
+    'List tasks in Joan. Can filter by project or list all tasks across projects.',
+    {
+      project_id: z.string().uuid().optional().describe('Filter by project ID'),
+      status: z.enum(['todo', 'in_progress', 'done', 'cancelled']).optional().describe('Filter by task status'),
+      limit: z.number().int().min(1).max(100).optional().describe('Maximum number of tasks to return (default: 50)'),
+    },
+    async (input) => {
+      try {
+        let tasks;
+        if (input.project_id) {
+          tasks = await client.getProjectTasks(input.project_id, {
+            status: input.status,
+            limit: input.limit,
+          });
+        } else {
+          tasks = await client.listTasks({
+            status: input.status,
+            limit: input.limit,
+          });
+        }
+
+        if (tasks.length === 0) {
+          return {
+            content: [{
+              type: 'text',
+              text: input.project_id
+                ? `No tasks found for project ${input.project_id}.`
+                : 'No tasks found.',
+            }],
+          };
+        }
+
+        const priorityLabels = ['none', 'low', 'medium', 'high'];
+        const taskList = tasks.map(t => {
+          let info = `- ${t.title} (ID: ${t.id})`;
+          if (t.task_number) info = `- #${t.task_number} ${t.title} (ID: ${t.id})`;
+          if (t.status) info += ` [${t.status}]`;
+          if (t.priority && t.priority > 0) info += ` (${priorityLabels[t.priority] || t.priority})`;
+          if (t.due_date) info += ` - Due: ${t.due_date}`;
+          return info;
+        }).join('\n');
+
+        return {
+          content: [{
+            type: 'text',
+            text: `Found ${tasks.length} task(s):\n\n${taskList}`,
+          }],
+        };
+      } catch (error) {
+        return { content: formatErrorForMcp(error) };
+      }
+    }
+  );
+
+  // Get Task Details (Read)
+  server.tool(
+    'get_task',
+    'Get detailed information about a specific task including subtasks.',
+    {
+      task_id: z.string().uuid().describe('Task ID to retrieve'),
+    },
+    async (input) => {
+      try {
+        const task = await client.getTaskWithSubtasks(input.task_id);
+
+        return {
+          content: [{
+            type: 'text',
+            text: JSON.stringify(task, null, 2),
+          }],
+        };
+      } catch (error) {
+        return { content: formatErrorForMcp(error) };
+      }
+    }
+  );
+
   // Create Task
   server.tool(
     'create_task',
