@@ -6,6 +6,7 @@ import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
 import type { JoanApiClient } from '../client/api-client.js';
 import { formatErrorForMcp } from '../utils/errors.js';
+import { formatColumnsForDisplay } from '../utils/column-mapper.js';
 
 export function registerProjectTools(server: McpServer, client: JoanApiClient): void {
   // List Projects (Read)
@@ -130,6 +131,29 @@ export function registerProjectTools(server: McpServer, client: JoanApiClient): 
           content: [{
             type: 'text',
             text: `Updated project "${project.name}" (ID: ${project.id})`,
+          }],
+        };
+      } catch (error) {
+        return { content: formatErrorForMcp(error) };
+      }
+    }
+  );
+
+  // List Columns
+  server.tool(
+    'list_columns',
+    'List Kanban columns for a project. Returns column IDs, names, positions, and default status. Use this to discover column IDs before moving tasks.',
+    {
+      project_id: z.string().uuid().describe('Project ID to get columns for'),
+    },
+    async (input) => {
+      try {
+        const columns = await client.getProjectColumns(input.project_id);
+
+        return {
+          content: [{
+            type: 'text',
+            text: formatColumnsForDisplay(columns),
           }],
         };
       } catch (error) {

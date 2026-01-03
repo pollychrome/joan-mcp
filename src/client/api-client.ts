@@ -203,6 +203,19 @@ export class JoanApiClient {
     await this.request<void>('POST', `/tasks/${id}/complete`);
   }
 
+  async bulkUpdateTasks(updates: Array<{
+    id: string;
+    column_id?: string;
+    status?: string;
+    order_index?: number;
+  }>): Promise<{ success: boolean; updated: number }> {
+    return this.request<{ success: boolean; updated: number }>(
+      'POST',
+      '/tasks/batch-reorder',
+      { updates }
+    );
+  }
+
   // ============ Milestones ============
 
   async listMilestones(projectId: string, params?: {

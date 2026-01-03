@@ -121,10 +121,11 @@ These tools allow AI assistants to modify data in Joan:
 
 | Tool | Description |
 |------|-------------|
-| `create_task` | Create a new task in a project |
-| `update_task` | Update task title, description, status, priority, etc. |
-| `complete_task` | Mark a task as completed |
+| `create_task` | Create a new task (auto-places in matching column based on status) |
+| `update_task` | Update task (auto-syncs column when status changes) |
+| `complete_task` | Mark as completed and move to Done column |
 | `delete_task` | Delete a task |
+| `bulk_update_tasks` | Update multiple tasks in a single transaction |
 
 ### Project Tools
 
@@ -132,6 +133,7 @@ These tools allow AI assistants to modify data in Joan:
 |------|-------------|
 | `create_project` | Create a new project |
 | `update_project` | Update project name, description, status |
+| `list_columns` | List Kanban columns for a project |
 
 ### Milestone Tools
 
@@ -180,6 +182,41 @@ These resources provide read-only access to Joan data:
 | `joan://goals/{id}/stats` | Goal statistics |
 | `joan://notes` | All notes |
 | `joan://notes/{id}` | Note details |
+
+## Status & Column Synchronization
+
+Joan uses two parallel systems for task state:
+- **Status**: `todo`, `in_progress`, `done`, `cancelled`
+- **Column**: Kanban board column (e.g., "To Do", "In Progress", "Done")
+
+By default, the MCP server **automatically synchronizes** these:
+
+| Action | Behavior |
+|--------|----------|
+| `create_task` with status | Places task in matching column |
+| `update_task` with status change | Moves task to matching column |
+| `complete_task` | Sets status AND moves to Done column |
+
+### Disabling Auto-Sync
+
+All task tools support a `sync_column` parameter (default: `true`):
+
+```
+// Only update status, don't move column
+update_task(task_id: "...", status: "done", sync_column: false)
+
+// Only mark complete, don't move to Done column
+complete_task(task_id: "...", sync_column: false)
+```
+
+### Column Override
+
+Providing an explicit `column_id` always takes precedence over auto-sync:
+
+```
+// Move to specific column regardless of status
+update_task(task_id: "...", status: "done", column_id: "custom-column-id")
+```
 
 ## Development
 
