@@ -311,3 +311,24 @@ export interface ApiErrorResponse {
   code?: string;
   details?: unknown;
 }
+
+// ============ Comments ============
+
+export interface Comment {
+  id: string;
+  entity_type: 'task' | 'milestone';
+  entity_id: string;
+  user_id: string;
+  user_name?: string;
+  content: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CreateCommentInput {
+  content: string;
+}
+
+export interface UpdateCommentInput {
+  content: string;
+}

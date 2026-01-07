@@ -9,6 +9,7 @@ import { registerTaskResources } from './tasks.js';
 import { registerMilestoneResources } from './milestones.js';
 import { registerGoalResources } from './goals.js';
 import { registerNoteResources } from './notes.js';
+import { registerCommentResources } from './comments.js';
 
 /**
  * Register all resources with the MCP server
@@ -19,6 +20,7 @@ export function registerAllResources(server: McpServer, client: JoanApiClient): 
   registerMilestoneResources(server, client);
   registerGoalResources(server, client);
   registerNoteResources(server, client);
+  registerCommentResources(server, client);
 }
 
 export {
@@ -27,4 +29,5 @@ export {
   registerMilestoneResources,
   registerGoalResources,
   registerNoteResources,
+  registerCommentResources,
 };

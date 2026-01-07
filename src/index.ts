@@ -60,6 +60,16 @@ Joan is a productivity application for managing projects, tasks, goals, mileston
 - update_note: Update note content or metadata
 - delete_note: Delete a note
 
+### Comments
+- list_task_comments: Get all comments on a task (requires task_id)
+- create_task_comment: Add a comment to a task (requires task_id, content)
+- update_task_comment: Edit a task comment (requires task_id, comment_id, content)
+- delete_task_comment: Remove a task comment (requires task_id, comment_id)
+- list_milestone_comments: Get all comments on a milestone (requires project_id, milestone_id)
+- create_milestone_comment: Add a comment to a milestone (requires project_id, milestone_id, content)
+- update_milestone_comment: Edit a milestone comment
+- delete_milestone_comment: Remove a milestone comment
+
 ## Usage Guidelines
 
 1. When the user mentions tasks, projects, goals, or productivity tracking, use Joan tools

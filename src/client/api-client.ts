@@ -17,6 +17,7 @@ import type {
   MilestoneWithTasks,
   MilestoneResource,
   Note,
+  Comment,
   CreateProjectInput,
   UpdateProjectInput,
   CreateTaskInput,
@@ -27,6 +28,8 @@ import type {
   UpdateGoalInput,
   CreateNoteInput,
   UpdateNoteInput,
+  CreateCommentInput,
+  UpdateCommentInput,
   ApiListResponse,
   ApiErrorResponse,
 } from './types.js';
@@ -373,5 +376,81 @@ export class JoanApiClient {
 
   async getCurrentUser(): Promise<{ id: string; email: string; name?: string }> {
     return this.request<{ id: string; email: string; name?: string }>('GET', '/auth/me');
+  }
+
+  // ============ Comments ============
+
+  // Task Comments
+  async listTaskComments(taskId: string): Promise<Comment[]> {
+    const result = await this.request<Comment[] | ApiListResponse<Comment>>(
+      'GET',
+      `/tasks/${taskId}/comments`
+    );
+    return Array.isArray(result) ? result : (result.items || result.data || []);
+  }
+
+  async createTaskComment(taskId: string, data: CreateCommentInput): Promise<Comment> {
+    return this.request<Comment>('POST', `/tasks/${taskId}/comments`, data);
+  }
+
+  async updateTaskComment(
+    taskId: string,
+    commentId: string,
+    data: UpdateCommentInput
+  ): Promise<Comment> {
+    return this.request<Comment>(
+      'PATCH',
+      `/tasks/${taskId}/comments/${commentId}`,
+      data
+    );
+  }
+
+  async deleteTaskComment(taskId: string, commentId: string): Promise<void> {
+    await this.request<void>('DELETE', `/tasks/${taskId}/comments/${commentId}`);
+  }
+
+  // Milestone Comments
+  async listMilestoneComments(projectId: string, milestoneId: string): Promise<Comment[]> {
+    const result = await this.request<Comment[] | ApiListResponse<Comment>>(
+      'GET',
+      `/projects/${projectId}/milestones/${milestoneId}/comments`
+    );
+    return Array.isArray(result) ? result : (result.items || result.data || []);
+  }
+
+  async createMilestoneComment(
+    projectId: string,
+    milestoneId: string,
+    data: CreateCommentInput
+  ): Promise<Comment> {
+    return this.request<Comment>(
+      'POST',
+      `/projects/${projectId}/milestones/${milestoneId}/comments`,
+      data
+    );
+  }
+
+  async updateMilestoneComment(
+    projectId: string,
+    milestoneId: string,
+    commentId: string,
+    data: UpdateCommentInput
+  ): Promise<Comment> {
+    return this.request<Comment>(
+      'PATCH',
+      `/projects/${projectId}/milestones/${milestoneId}/comments/${commentId}`,
+      data
+    );
+  }
+
+  async deleteMilestoneComment(
+    projectId: string,
+    milestoneId: string,
+    commentId: string
+  ): Promise<void> {
+    await this.request<void>(
+      'DELETE',
+      `/projects/${projectId}/milestones/${milestoneId}/comments/${commentId}`
+    );
   }
 }
