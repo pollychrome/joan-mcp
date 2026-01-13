@@ -32,6 +32,17 @@ import type {
   UpdateCommentInput,
   ApiListResponse,
   ApiErrorResponse,
+  Attachment,
+  AttachmentMetadata,
+  UpdateAttachmentInput,
+  AttachmentDownloadInfo,
+  AttachmentHierarchy,
+  AttachmentEntityType,
+  StorageUsage,
+  Resource,
+  CreateResourceInput,
+  UpdateResourceInput,
+  ResourceListResponse,
 } from './types.js';
 
 export interface JoanApiClientConfig {
@@ -162,6 +173,10 @@ export class JoanApiClient {
 
   async getProjectAnalytics(projectId: string): Promise<ProjectAnalytics> {
     return this.request<ProjectAnalytics>('GET', `/projects/${projectId}/analytics`);
+  }
+
+  async getProjectStatuses(projectId: string): Promise<ProjectStatusesResponse> {
+    return this.request<ProjectStatusesResponse>('GET', `/projects/${projectId}/statuses`);
   }
 
   // ============ Tasks ============
@@ -451,6 +466,257 @@ export class JoanApiClient {
     await this.request<void>(
       'DELETE',
       `/projects/${projectId}/milestones/${milestoneId}/comments/${commentId}`
+    );
+  }
+
+  // ============ Attachments ============
+
+  /**
+   * Upload a file attachment using multipart/form-data
+   */
+  async uploadAttachment(
+    fileBuffer: Buffer,
+    filename: string,
+    mimeType: string,
+    metadata?: AttachmentMetadata
+  ): Promise<Attachment> {
+    const url = `${this.baseUrl}/attachments/upload`;
+
+    // Create form data manually for Node.js compatibility
+    const boundary = `----FormBoundary${Date.now()}`;
+    const parts: Buffer[] = [];
+
+    // Add file part
+    parts.push(Buffer.from(
+      `--${boundary}\r\n` +
+      `Content-Disposition: form-data; name="file"; filename="${filename}"\r\n` +
+      `Content-Type: ${mimeType}\r\n\r\n`
+    ));
+    parts.push(fileBuffer);
+    parts.push(Buffer.from('\r\n'));
+
+    // Add metadata part if provided
+    if (metadata) {
+      parts.push(Buffer.from(
+        `--${boundary}\r\n` +
+        `Content-Disposition: form-data; name="metadata"\r\n` +
+        `Content-Type: application/json\r\n\r\n` +
+        `${JSON.stringify(metadata)}\r\n`
+      ));
+    }
+
+    // Add closing boundary
+    parts.push(Buffer.from(`--${boundary}--\r\n`));
+
+    const body = Buffer.concat(parts);
+
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${this.authToken}`,
+        'Content-Type': `multipart/form-data; boundary=${boundary}`,
+        'Content-Length': String(body.length),
+      },
+      body,
+    });
+
+    if (!response.ok) {
+      let errorMessage = 'Upload failed';
+      let errorDetails: unknown;
+
+      try {
+        const errorBody = await response.json() as ApiErrorResponse;
+        errorMessage = errorBody.error || errorMessage;
+        errorDetails = errorBody.details;
+      } catch {
+        // Ignore JSON parse errors
+      }
+
+      throw new JoanApiError(response.status, errorMessage, errorDetails);
+    }
+
+    return response.json() as Promise<Attachment>;
+  }
+
+  /**
+   * Get attachment metadata without downloading the file
+   */
+  async getAttachmentMetadata(id: string): Promise<Attachment> {
+    return this.request<Attachment>('GET', `/attachments/${id}/metadata`);
+  }
+
+  /**
+   * Get download URL information for an attachment
+   */
+  async getAttachmentDownloadUrl(id: string, expiresIn?: number): Promise<AttachmentDownloadInfo> {
+    return this.request<AttachmentDownloadInfo>(
+      'GET',
+      `/attachments/${id}/download`,
+      undefined,
+      expiresIn ? { expires: expiresIn } : undefined
+    );
+  }
+
+  /**
+   * Update attachment metadata
+   */
+  async updateAttachment(id: string, data: UpdateAttachmentInput): Promise<Attachment> {
+    return this.request<Attachment>('PATCH', `/attachments/${id}`, data);
+  }
+
+  /**
+   * Delete an attachment
+   */
+  async deleteAttachment(id: string): Promise<void> {
+    await this.request<void>('DELETE', `/attachments/${id}`);
+  }
+
+  /**
+   * List attachments for a specific entity
+   */
+  async listAttachmentsByEntity(
+    entityType: AttachmentEntityType,
+    entityId: string
+  ): Promise<Attachment[]> {
+    const result = await this.request<Attachment[] | ApiListResponse<Attachment>>(
+      'GET',
+      `/attachments/entity/${entityType}/${entityId}`
+    );
+    return Array.isArray(result) ? result : (result.items || result.data || []);
+  }
+
+  /**
+   * Get all attachments organized by project hierarchy
+   */
+  async getProjectAttachmentHierarchy(projectId: string): Promise<AttachmentHierarchy> {
+    return this.request<AttachmentHierarchy>('GET', `/attachments/project/${projectId}/hierarchy`);
+  }
+
+  /**
+   * Get storage usage statistics
+   */
+  async getStorageUsage(): Promise<StorageUsage> {
+    return this.request<StorageUsage>('GET', '/attachments/usage');
+  }
+
+  // ============ Task Resources ============
+
+  async listTaskResources(taskId: string, type?: string): Promise<Resource[]> {
+    const result = await this.request<ResourceListResponse | Resource[]>(
+      'GET',
+      `/tasks/${taskId}/resources`,
+      undefined,
+      type ? { type } : undefined
+    );
+    if (Array.isArray(result)) {
+      return result;
+    }
+    return result.resources || [];
+  }
+
+  async getTaskResource(taskId: string, resourceId: string): Promise<Resource> {
+    return this.request<Resource>('GET', `/tasks/${taskId}/resources/${resourceId}`);
+  }
+
+  async createTaskResource(taskId: string, data: CreateResourceInput): Promise<Resource> {
+    return this.request<Resource>('POST', `/tasks/${taskId}/resources`, data);
+  }
+
+  async updateTaskResource(
+    taskId: string,
+    resourceId: string,
+    data: UpdateResourceInput
+  ): Promise<Resource> {
+    return this.request<Resource>(
+      'PATCH',
+      `/tasks/${taskId}/resources/${resourceId}`,
+      data
+    );
+  }
+
+  async deleteTaskResource(taskId: string, resourceId: string): Promise<void> {
+    await this.request<void>('DELETE', `/tasks/${taskId}/resources/${resourceId}`);
+  }
+
+  // ============ Project Resources ============
+
+  async listProjectResources(projectId: string): Promise<Resource[]> {
+    const result = await this.request<ResourceListResponse | Resource[]>(
+      'GET',
+      `/projects/${projectId}/resources`
+    );
+    if (Array.isArray(result)) {
+      return result;
+    }
+    return result.resources || [];
+  }
+
+  async createProjectResource(projectId: string, data: CreateResourceInput): Promise<Resource> {
+    return this.request<Resource>('POST', `/projects/${projectId}/resources`, data);
+  }
+
+  async updateProjectResource(
+    projectId: string,
+    resourceId: string,
+    data: UpdateResourceInput
+  ): Promise<Resource> {
+    return this.request<Resource>(
+      'PATCH',
+      `/projects/${projectId}/resources/${resourceId}`,
+      data
+    );
+  }
+
+  async deleteProjectResource(projectId: string, resourceId: string): Promise<void> {
+    await this.request<void>('DELETE', `/projects/${projectId}/resources/${resourceId}`);
+  }
+
+  // ============ Milestone Resources ============
+
+  async listMilestoneResources(projectId: string, milestoneId: string): Promise<Resource[]> {
+    const result = await this.request<ResourceListResponse | Resource[]>(
+      'GET',
+      `/projects/${projectId}/milestones/${milestoneId}/resources`
+    );
+    if (Array.isArray(result)) {
+      return result;
+    }
+    return result.resources || [];
+  }
+
+  async createMilestoneResource(
+    projectId: string,
+    milestoneId: string,
+    data: CreateResourceInput
+  ): Promise<Resource> {
+    return this.request<Resource>(
+      'POST',
+      `/projects/${projectId}/milestones/${milestoneId}/resources`,
+      data
+    );
+  }
+
+  async updateMilestoneResource(
+    projectId: string,
+    milestoneId: string,
+    resourceId: string,
+    data: UpdateResourceInput
+  ): Promise<Resource> {
+    return this.request<Resource>(
+      'PATCH',
+      `/projects/${projectId}/milestones/${milestoneId}/resources/${resourceId}`,
+      data
+    );
+  }
+
+  async deleteMilestoneResource(
+    projectId: string,
+    milestoneId: string,
+    resourceId: string
+  ): Promise<void> {
+    await this.request<void>(
+      'DELETE',
+      `/projects/${projectId}/milestones/${milestoneId}/resources/${resourceId}`
     );
   }
 }

@@ -51,6 +51,7 @@ export interface ProjectColumn {
   position: number;
   wip_limit?: number;
   is_default: boolean;
+  status_key?: string; // Custom status key for API/MCP compatibility
 }
 
 export interface ProjectAnalytics {
@@ -70,6 +71,20 @@ export interface ProjectAnalytics {
   }[];
 }
 
+export interface ProjectStatus {
+  key: string;
+  name: string;
+  color: string;
+  position: number;
+  is_default: boolean;
+  column_id?: string;
+}
+
+export interface ProjectStatusesResponse {
+  statuses: ProjectStatus[];
+  custom: boolean; // true if project has custom statuses, false if using defaults
+}
+
 // ============ Tasks ============
 
 export interface Task {
@@ -80,7 +95,7 @@ export interface Task {
   column_id?: string;
   title: string;
   description?: string;
-  status: 'pending' | 'in_progress' | 'completed' | 'cancelled';
+  status: string; // Now supports custom statuses per project
   priority: number; // 0-3
   due_date?: string;
   estimated_minutes?: number;
@@ -331,4 +346,158 @@ export interface CreateCommentInput {
 
 export interface UpdateCommentInput {
   content: string;
+}
+
+// ============ Attachments ============
+
+export type AttachmentCategory =
+  | 'document'
+  | 'image'
+  | 'video'
+  | 'audio'
+  | 'archive'
+  | 'code'
+  | 'other';
+
+export type AttachmentEntityType =
+  | 'project'
+  | 'milestone'
+  | 'task'
+  | 'note'
+  | 'folder'
+  | 'user';
+
+export interface Attachment {
+  id: string;
+  user_id: string;
+  filename: string;
+  display_name: string;
+  description: string | null;
+  mime_type: string;
+  size: number;
+  file_extension: string | null;
+  storage_key: string;
+  category: AttachmentCategory;
+  tags: string[] | null;
+  entity_type: AttachmentEntityType | null;
+  entity_id: string | null;
+  uploaded_at: string;
+  created_at: string;
+  updated_at: string;
+  url: string;
+}
+
+export interface AttachmentMetadata {
+  entity_type?: AttachmentEntityType;
+  entity_id?: string;
+  display_name?: string;
+  description?: string;
+  category?: AttachmentCategory;
+  tags?: string[];
+}
+
+export interface UpdateAttachmentInput {
+  display_name?: string;
+  description?: string;
+  category?: AttachmentCategory;
+  tags?: string[];
+}
+
+export interface AttachmentDownloadInfo {
+  download_url: string;
+  filename: string;
+  display_name: string;
+  mime_type: string;
+  file_size: number;
+  expires_at: string;
+}
+
+export interface AttachmentHierarchy {
+  project: {
+    id: string;
+    attachments: Attachment[];
+  };
+  milestones: {
+    id: string;
+    name: string;
+    status: string;
+    attachments: Attachment[];
+    tasks: {
+      id: string;
+      title: string;
+      status: string;
+      attachments: Attachment[];
+    }[];
+  }[];
+  unassigned_tasks: {
+    id: string;
+    title: string;
+    status: string;
+    attachments: Attachment[];
+  }[];
+  total_files: number;
+}
+
+export interface StorageUsage {
+  total_files: number;
+  total_size_bytes: number;
+  total_size_mb: number;
+  by_entity: Record<string, number>;
+  by_type: {
+    file_type: string;
+    count: number;
+    total_size: number;
+  }[];
+  storage_limit_mb: number;
+  usage_percentage: number;
+}
+
+// ============ Resources (Links/Notes) ============
+
+export type ResourceType =
+  | 'link'
+  | 'note'
+  | 'article'
+  | 'video'
+  | 'book'
+  | 'tool'
+  | 'guide';
+
+export interface Resource {
+  id: string;
+  task_id?: string;
+  project_id?: string;
+  milestone_id?: string;
+  type: ResourceType;
+  title: string | null;
+  url: string | null;
+  content: string | null;
+  description: string | null;
+  source: string | null;
+  created_by: string;
+  created_by_name?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CreateResourceInput {
+  type: ResourceType;
+  title?: string;
+  url?: string;
+  content?: string;
+  description?: string;
+  source?: string;
+}
+
+export interface UpdateResourceInput {
+  title?: string;
+  url?: string;
+  content?: string;
+  description?: string;
+  source?: string;
+}
+
+export interface ResourceListResponse {
+  resources: Resource[];
+  total: number;
 }

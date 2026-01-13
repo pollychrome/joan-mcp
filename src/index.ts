@@ -74,7 +74,7 @@ Joan is a productivity application for managing projects, tasks, goals, mileston
 
 1. When the user mentions tasks, projects, goals, or productivity tracking, use Joan tools
 2. Use list_projects first to find project IDs, then list_milestones/list_tasks for details
-3. Task status values: "todo", "in_progress", "done", "cancelled"
+3. Task status values: Projects can define custom statuses. Default statuses are "todo", "in_progress", "done", "cancelled". Use list_columns to see available statuses for a project.
 4. Task priority values: "none", "low", "medium", "high"
 5. Project status values: "planning", "active", "on_hold", "completed", "archived"
 6. Milestone status values: "upcoming", "in_progress", "completed", "missed"

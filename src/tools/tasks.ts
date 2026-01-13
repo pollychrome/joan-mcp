@@ -16,7 +16,7 @@ export function registerTaskTools(server: McpServer, client: JoanApiClient): voi
     'List tasks in Joan. Can filter by project or list all tasks across projects.',
     {
       project_id: z.string().uuid().optional().describe('Filter by project ID'),
-      status: z.enum(['todo', 'in_progress', 'done', 'cancelled']).optional().describe('Filter by task status'),
+      status: z.string().optional().describe('Filter by task status (supports custom statuses per project)'),
       limit: z.number().int().min(1).max(100).optional().describe('Maximum number of tasks to return (default: 50)'),
     },
     async (input) => {
@@ -99,7 +99,7 @@ export function registerTaskTools(server: McpServer, client: JoanApiClient): voi
       description: z.string().optional().describe('Task description'),
       project_id: z.string().uuid().optional().describe('Project ID to create task in'),
       column_id: z.string().uuid().optional().describe('Kanban column ID (overrides status-based inference)'),
-      status: z.enum(['todo', 'in_progress', 'done', 'cancelled']).optional().describe('Initial task status'),
+      status: z.string().optional().describe('Initial task status (supports custom statuses per project)'),
       priority: z.enum(['none', 'low', 'medium', 'high']).optional().describe('Task priority'),
       due_date: z.string().optional().describe('Due date (ISO 8601 format, e.g., 2025-12-31)'),
       estimated_pomodoros: z.number().int().min(1).optional().describe('Estimated pomodoros (25 min each)'),
@@ -167,7 +167,7 @@ export function registerTaskTools(server: McpServer, client: JoanApiClient): voi
       title: z.string().min(1).optional().describe('New task title'),
       description: z.string().optional().describe('New task description'),
       column_id: z.string().uuid().optional().describe('Move to column ID (overrides auto-sync)'),
-      status: z.enum(['todo', 'in_progress', 'done', 'cancelled']).optional().describe('New task status'),
+      status: z.string().optional().describe('New task status (supports custom statuses per project)'),
       priority: z.enum(['none', 'low', 'medium', 'high']).optional().describe('New priority'),
       due_date: z.string().optional().describe('New due date (ISO 8601 format)'),
       estimated_pomodoros: z.number().int().min(1).optional().describe('New estimated pomodoros'),
@@ -325,7 +325,7 @@ export function registerTaskTools(server: McpServer, client: JoanApiClient): voi
       updates: z.array(z.object({
         task_id: z.string().uuid().describe('Task ID to update'),
         column_id: z.string().uuid().optional().describe('Column ID to move task to'),
-        status: z.enum(['todo', 'in_progress', 'done', 'cancelled']).optional().describe('New status'),
+        status: z.string().optional().describe('New status (supports custom statuses per project)'),
       })).min(1).max(100).describe('Array of task updates (max 100)'),
     },
     async (input) => {
