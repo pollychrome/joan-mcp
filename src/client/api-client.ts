@@ -8,6 +8,7 @@ import type {
   ProjectWithDetails,
   ProjectColumn,
   ProjectAnalytics,
+  ProjectStatusesResponse,
   Task,
   TaskWithSubtasks,
   Goal,
@@ -163,12 +164,12 @@ export class JoanApiClient {
   }
 
   async getProjectColumns(projectId: string): Promise<ProjectColumn[]> {
-    // Get kanban board which contains columns
-    const result = await this.request<{ columns: ProjectColumn[] } | ProjectColumn[]>(
+    // Fetch columns from project_columns table (the source of truth for kanban structure)
+    const result = await this.request<ProjectColumn[]>(
       'GET',
-      `/tasks/kanban/${projectId}`
+      `/projects/${projectId}/columns`
     );
-    return Array.isArray(result) ? result : (result.columns || []);
+    return Array.isArray(result) ? result : [];
   }
 
   async getProjectAnalytics(projectId: string): Promise<ProjectAnalytics> {
