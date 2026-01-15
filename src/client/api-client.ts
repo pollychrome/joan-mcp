@@ -9,6 +9,9 @@ import type {
   ProjectColumn,
   ProjectAnalytics,
   ProjectStatusesResponse,
+  ProjectTag,
+  CreateProjectTagInput,
+  UpdateProjectTagInput,
   Task,
   TaskWithSubtasks,
   Goal,
@@ -718,6 +721,99 @@ export class JoanApiClient {
     await this.request<void>(
       'DELETE',
       `/projects/${projectId}/milestones/${milestoneId}/resources/${resourceId}`
+    );
+  }
+
+  // ============ Project Tags ============
+
+  /**
+   * List all tags for a project
+   */
+  async listProjectTags(projectId: string): Promise<ProjectTag[]> {
+    const result = await this.request<ProjectTag[] | ApiListResponse<ProjectTag>>(
+      'GET',
+      `/projects/${projectId}/tags`
+    );
+    return Array.isArray(result) ? result : (result.items || result.data || []);
+  }
+
+  /**
+   * Get a single project tag by ID
+   */
+  async getProjectTag(projectId: string, tagId: string): Promise<ProjectTag> {
+    return this.request<ProjectTag>('GET', `/projects/${projectId}/tags/${tagId}`);
+  }
+
+  /**
+   * Create a new tag for a project
+   */
+  async createProjectTag(projectId: string, data: CreateProjectTagInput): Promise<ProjectTag> {
+    return this.request<ProjectTag>('POST', `/projects/${projectId}/tags`, data);
+  }
+
+  /**
+   * Update a project tag
+   */
+  async updateProjectTag(
+    projectId: string,
+    tagId: string,
+    data: UpdateProjectTagInput
+  ): Promise<ProjectTag> {
+    return this.request<ProjectTag>(
+      'PATCH',
+      `/projects/${projectId}/tags/${tagId}`,
+      data
+    );
+  }
+
+  /**
+   * Delete a project tag (also removes from all tasks)
+   */
+  async deleteProjectTag(projectId: string, tagId: string): Promise<void> {
+    await this.request<void>('DELETE', `/projects/${projectId}/tags/${tagId}`);
+  }
+
+  // ============ Task Tag Assignments ============
+
+  /**
+   * Get all tags assigned to a task
+   */
+  async getTaskTags(projectId: string, taskId: string): Promise<ProjectTag[]> {
+    const result = await this.request<ProjectTag[] | ApiListResponse<ProjectTag>>(
+      'GET',
+      `/projects/${projectId}/tasks/${taskId}/tags`
+    );
+    return Array.isArray(result) ? result : (result.items || result.data || []);
+  }
+
+  /**
+   * Add a tag to a task
+   */
+  async addTagToTask(projectId: string, taskId: string, tagId: string): Promise<void> {
+    await this.request<void>(
+      'POST',
+      `/projects/${projectId}/tasks/${taskId}/tags/${tagId}`
+    );
+  }
+
+  /**
+   * Remove a tag from a task
+   */
+  async removeTagFromTask(projectId: string, taskId: string, tagId: string): Promise<void> {
+    await this.request<void>(
+      'DELETE',
+      `/projects/${projectId}/tasks/${taskId}/tags/${tagId}`
+    );
+  }
+
+  /**
+   * Bulk update tags for a task (replaces all existing tags)
+   */
+  async setTaskTags(projectId: string, taskId: string, tagIds: string[]): Promise<ProjectTag[]> {
+    return this.request<ProjectTag[]>(
+      'PUT',
+      `/projects/${projectId}/tasks/${taskId}/tags`,
+      { tag_ids: tagIds }
     );
   }
 }

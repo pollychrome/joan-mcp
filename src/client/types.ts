@@ -501,3 +501,24 @@ export interface ResourceListResponse {
   resources: Resource[];
   total: number;
 }
+
+// ============ Project Tags ============
+
+export interface ProjectTag {
+  id: string;
+  project_id: string;
+  name: string;
+  color: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CreateProjectTagInput {
+  name: string;
+  color?: string; // Hex color, defaults to '#6B7280' (gray)
+}
+
+export interface UpdateProjectTagInput {
+  name?: string;
+  color?: string;
+}
