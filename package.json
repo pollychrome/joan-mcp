@@ -1,6 +1,6 @@
 {
   "name": "@pollychrome/joan-mcp",
-  "version": "1.3.1",
+  "version": "1.4.0",
   "description": "MCP server for Joan productivity app - enables AI assistants to manage projects, tasks, goals, milestones, and notes",
   "type": "module",
   "main": "dist/index.js",
