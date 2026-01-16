@@ -33,7 +33,7 @@ export function registerCommentTools(server: McpServer, client: JoanApiClient): 
         const commentList = comments.map(c => {
           const author = c.user_name || 'Unknown';
           const date = new Date(c.created_at).toLocaleString();
-          return `- **${author}** (${date}):\n  "${c.content}"`;
+          return `- [${c.id}] **${author}** (${date}):\n  "${c.content}"`;
         }).join('\n\n');
 
         return {
@@ -154,7 +154,7 @@ export function registerCommentTools(server: McpServer, client: JoanApiClient): 
         const commentList = comments.map(c => {
           const author = c.user_name || 'Unknown';
           const date = new Date(c.created_at).toLocaleString();
-          return `- **${author}** (${date}):\n  "${c.content}"`;
+          return `- [${c.id}] **${author}** (${date}):\n  "${c.content}"`;
         }).join('\n\n');
 
         return {

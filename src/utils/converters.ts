@@ -18,11 +18,13 @@ const STATUS_TO_FRONTEND: Record<string, string> = {
 };
 
 export function statusToBackend(status: string): string {
-  return STATUS_TO_BACKEND[status] || 'pending';
+  // Pass through custom statuses unchanged; only convert known frontend statuses
+  return STATUS_TO_BACKEND[status] || status;
 }
 
 export function statusToFrontend(status: string): string {
-  return STATUS_TO_FRONTEND[status] || 'todo';
+  // Pass through custom statuses unchanged; only convert known backend statuses
+  return STATUS_TO_FRONTEND[status] || status;
 }
 
 // Priority conversions (string <-> number)

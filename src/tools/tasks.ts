@@ -21,20 +21,26 @@ export function registerTaskTools(server: McpServer, client: JoanApiClient): voi
     },
     async (input) => {
       try {
+        // Convert status filter from frontend format to backend format for API query
+        const backendStatus = input.status ? statusToBackend(input.status) : undefined;
+
         let tasks;
         if (input.project_id) {
           tasks = await client.getProjectTasks(input.project_id, {
-            status: input.status,
+            status: backendStatus,
             limit: input.limit,
           });
         } else {
           tasks = await client.listTasks({
-            status: input.status,
+            status: backendStatus,
             limit: input.limit,
           });
         }
 
-        if (tasks.length === 0) {
+        // Convert tasks to frontend format for display
+        const formattedTasks = tasks.map(t => formatTask(t));
+
+        if (formattedTasks.length === 0) {
           return {
             content: [{
               type: 'text',
@@ -45,12 +51,11 @@ export function registerTaskTools(server: McpServer, client: JoanApiClient): voi
           };
         }
 
-        const priorityLabels = ['none', 'low', 'medium', 'high'];
-        const taskList = tasks.map(t => {
+        const taskList = formattedTasks.map(t => {
           let info = `- ${t.title} (ID: ${t.id})`;
           if (t.task_number) info = `- #${t.task_number} ${t.title} (ID: ${t.id})`;
           if (t.status) info += ` [${t.status}]`;
-          if (t.priority && t.priority > 0) info += ` (${priorityLabels[t.priority] || t.priority})`;
+          if (t.priority && t.priority !== 'none') info += ` (${t.priority})`;
           if (t.due_date) info += ` - Due: ${t.due_date}`;
           return info;
         }).join('\n');
@@ -58,7 +63,7 @@ export function registerTaskTools(server: McpServer, client: JoanApiClient): voi
         return {
           content: [{
             type: 'text',
-            text: `Found ${tasks.length} task(s):\n\n${taskList}`,
+            text: `Found ${formattedTasks.length} task(s):\n\n${taskList}`,
           }],
         };
       } catch (error) {
