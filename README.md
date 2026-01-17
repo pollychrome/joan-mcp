@@ -10,6 +10,9 @@ Model Context Protocol (MCP) server for the Joan productivity app. Enables AI as
 - **Self-Describing**: Automatically provides usage instructions to AI assistants via MCP protocol
 - **Production API**: Connects directly to your Joan account data
 
+## Shared specs
+- Cross-repo agentic workflow and MCP/API alignment live in `shared/joan-shared-specs`.
+
 ## Installation
 
 ### Option 1: npx (Recommended - No Install Required)
