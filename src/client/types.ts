@@ -52,6 +52,27 @@ export interface ProjectColumn {
   wip_limit?: number;
   is_default: boolean;
   status_key?: string; // Custom status key for API/MCP compatibility
+  task_count?: number;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface CreateColumnInput {
+  name: string;
+  position?: number;
+  default_status?: string;
+  color?: string;
+}
+
+export interface UpdateColumnInput {
+  name?: string;
+  default_status?: string;
+  color?: string;
+}
+
+export interface DeleteColumnResult {
+  deleted: true;
+  tasks_moved?: number;
 }
 
 export interface ProjectAnalytics {

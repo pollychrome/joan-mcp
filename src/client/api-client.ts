@@ -12,6 +12,9 @@ import type {
   ProjectTag,
   CreateProjectTagInput,
   UpdateProjectTagInput,
+  CreateColumnInput,
+  UpdateColumnInput,
+  DeleteColumnResult,
   Task,
   TaskWithSubtasks,
   Goal,
@@ -171,6 +174,46 @@ export class JoanApiClient {
     const result = await this.request<ProjectColumn[]>(
       'GET',
       `/projects/${projectId}/columns`
+    );
+    return Array.isArray(result) ? result : [];
+  }
+
+  async createColumn(projectId: string, data: CreateColumnInput): Promise<ProjectColumn> {
+    return this.request<ProjectColumn>('POST', `/projects/${projectId}/columns`, data);
+  }
+
+  async updateColumn(
+    projectId: string,
+    columnId: string,
+    data: UpdateColumnInput
+  ): Promise<ProjectColumn> {
+    return this.request<ProjectColumn>(
+      'PATCH',
+      `/projects/${projectId}/columns/${columnId}`,
+      data
+    );
+  }
+
+  async deleteColumn(
+    projectId: string,
+    columnId: string,
+    moveTasksTo?: string
+  ): Promise<DeleteColumnResult> {
+    const queryParams = moveTasksTo ? { move_tasks_to: moveTasksTo } : undefined;
+    const result = await this.request<DeleteColumnResult>(
+      'DELETE',
+      `/projects/${projectId}/columns/${columnId}`,
+      undefined,
+      queryParams
+    );
+    return result ?? { deleted: true };
+  }
+
+  async reorderColumns(projectId: string, columnOrder: string[]): Promise<ProjectColumn[]> {
+    const result = await this.request<ProjectColumn[]>(
+      'PUT',
+      `/projects/${projectId}/columns/reorder`,
+      { column_order: columnOrder }
     );
     return Array.isArray(result) ? result : [];
   }

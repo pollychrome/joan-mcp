@@ -161,4 +161,130 @@ export function registerProjectTools(server: McpServer, client: JoanApiClient): 
       }
     }
   );
+
+  // Create Column
+  server.tool(
+    'create_column',
+    'Create a new Kanban column in a project. Column names must be unique within the project.',
+    {
+      project_id: z.string().uuid().describe('Project ID to create column in'),
+      name: z.string().min(1).max(50).describe('Column display name (1-50 chars)'),
+      position: z.number().int().min(0).optional().describe('Insert position (0-indexed). Omit to append at end.'),
+      default_status: z.string().optional().describe('Status for tasks placed in this column'),
+      color: z.string().regex(/^#[0-9A-Fa-f]{6}$/).optional().describe('Hex color code (e.g., "#3B82F6")'),
+    },
+    async (input) => {
+      try {
+        const column = await client.createColumn(input.project_id, {
+          name: input.name,
+          position: input.position,
+          default_status: input.default_status,
+          color: input.color,
+        });
+
+        return {
+          content: [{
+            type: 'text',
+            text: `Created column "${column.name}" (ID: ${column.id}) at position ${column.position}`,
+          }],
+        };
+      } catch (error) {
+        return { content: formatErrorForMcp(error) };
+      }
+    }
+  );
+
+  // Update Column
+  server.tool(
+    'update_column',
+    'Update an existing column\'s properties. Does not change position (use reorder_columns for that).',
+    {
+      project_id: z.string().uuid().describe('Project ID'),
+      column_id: z.string().uuid().describe('Column ID to update'),
+      name: z.string().min(1).max(50).optional().describe('New display name'),
+      default_status: z.string().optional().describe('New default status'),
+      color: z.string().regex(/^#[0-9A-Fa-f]{6}$/).optional().describe('New hex color code'),
+    },
+    async (input) => {
+      try {
+        const column = await client.updateColumn(input.project_id, input.column_id, {
+          name: input.name,
+          default_status: input.default_status,
+          color: input.color,
+        });
+
+        return {
+          content: [{
+            type: 'text',
+            text: `Updated column "${column.name}" (ID: ${column.id})`,
+          }],
+        };
+      } catch (error) {
+        return { content: formatErrorForMcp(error) };
+      }
+    }
+  );
+
+  // Delete Column
+  server.tool(
+    'delete_column',
+    'Delete a column from a project. If the column has tasks, you must specify where to move them.',
+    {
+      project_id: z.string().uuid().describe('Project ID'),
+      column_id: z.string().uuid().describe('Column ID to delete'),
+      move_tasks_to: z.string().uuid().optional().describe('Column ID to move tasks to (required if column has tasks)'),
+    },
+    async (input) => {
+      try {
+        const result = await client.deleteColumn(
+          input.project_id,
+          input.column_id,
+          input.move_tasks_to
+        );
+
+        let message = 'Column deleted successfully.';
+        if (result.tasks_moved !== undefined && result.tasks_moved > 0) {
+          message += ` ${result.tasks_moved} task(s) moved to target column.`;
+        }
+
+        return {
+          content: [{
+            type: 'text',
+            text: message,
+          }],
+        };
+      } catch (error) {
+        return { content: formatErrorForMcp(error) };
+      }
+    }
+  );
+
+  // Reorder Columns
+  server.tool(
+    'reorder_columns',
+    'Reorder columns within a project. All existing column IDs must be included in the new order.',
+    {
+      project_id: z.string().uuid().describe('Project ID'),
+      column_order: z.array(z.string().uuid()).min(1).describe('Array of column UUIDs in desired order'),
+    },
+    async (input) => {
+      try {
+        const columns = await client.reorderColumns(input.project_id, input.column_order);
+
+        const sortedNames = columns
+          .sort((a, b) => a.position - b.position)
+          .map(c => c.name)
+          .join(' → ');
+
+        return {
+          content: [{
+            type: 'text',
+            text: `Columns reordered: ${sortedNames}`,
+          }],
+        };
+      } catch (error) {
+        return { content: formatErrorForMcp(error) };
+      }
+    }
+  );
 }

@@ -31,6 +31,13 @@ Joan is a productivity application for managing projects, tasks, goals, mileston
 - create_project: Create a new project (name required; optional: description, status, start_date, end_date)
 - update_project: Update project properties
 
+### Columns
+- list_columns: List Kanban columns for a project (requires project_id)
+- create_column: Create a new column (requires project_id, name; optional: position, default_status, color)
+- update_column: Update column properties (requires project_id, column_id; optional: name, default_status, color)
+- delete_column: Delete a column (requires project_id, column_id; optional: move_tasks_to)
+- reorder_columns: Reorder columns (requires project_id, column_order array of column IDs)
+
 ### Tasks
 - list_tasks: List tasks (optional: filter by project_id, status)
 - get_task: Get detailed task info including subtasks
