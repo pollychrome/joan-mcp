@@ -12,6 +12,7 @@ Model Context Protocol (MCP) server for the Joan productivity app. Enables AI as
 
 ## Shared specs
 - Cross-repo agentic workflow and MCP/API alignment live in `shared/joan-shared-specs`.
+- Repo docs: `shared/joan-shared-specs/docs/joan-mcp/README.md`.
 
 ## Installation
 
