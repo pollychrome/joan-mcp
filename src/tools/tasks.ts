@@ -254,38 +254,41 @@ export function registerTaskTools(server: McpServer, client: JoanApiClient): voi
     },
     async (input) => {
       try {
-        // First, complete the task (updates status)
+        // Get task info before completing (need project_id and task_number)
+        const task = await client.getTask(input.task_id);
+
+        // Complete the task (updates status to done)
         await client.completeTask(input.task_id);
 
         let columnSynced = false;
+        let columnName = '';
 
         // If sync_column is enabled, also move to Done column
         if (input.sync_column !== false) {
-          try {
-            // Get task to find its project
-            const task = await client.getTask(input.task_id);
+          if (task.project_id) {
+            // Get project columns
+            const columns = await client.getProjectColumns(task.project_id);
 
-            if (task.project_id) {
-              // Get project columns
-              const columns = await client.getProjectColumns(task.project_id);
+            // Find the Done column - CRITICAL: Use required=true to fail loudly
+            // This will throw an error if no Done column is found
+            const doneColumn = inferColumnFromStatus(columns, 'done', { required: true });
 
-              // Find the Done column
-              const doneColumn = inferColumnFromStatus(columns, 'done');
-
-              if (doneColumn && doneColumn.id !== task.column_id) {
-                // Move task to Done column
-                await client.updateTask(input.task_id, { column_id: doneColumn.id });
-                columnSynced = true;
-              }
+            // TypeScript doesn't know required=true guarantees non-null, so we check
+            if (doneColumn && doneColumn.id !== task.column_id) {
+              // Move task to Done column
+              await client.updateTask(input.task_id, { column_id: doneColumn.id });
+              columnSynced = true;
+              columnName = doneColumn.name;
+              console.log(
+                `[Joan MCP] Moved task #${task.task_number} to ${doneColumn.name} column`
+              );
             }
-          } catch {
-            // Column sync failed but task was completed - don't throw
           }
         }
 
         const message = columnSynced
-          ? `Task ${input.task_id} marked as completed and moved to Done column`
-          : `Task ${input.task_id} marked as completed`;
+          ? `Task #${task.task_number} marked as complete and moved to ${columnName} column`
+          : `Task #${task.task_number} marked as complete`;
 
         return {
           content: [{
@@ -335,15 +338,58 @@ export function registerTaskTools(server: McpServer, client: JoanApiClient): voi
     },
     async (input) => {
       try {
-        // Convert to backend format
-        const updates = input.updates.map(update => ({
-          id: update.task_id,
-          column_id: update.column_id,
-          status: update.status ? statusToBackend(update.status) : undefined,
-          order_index: 0, // Required by API but we just use 0 for bulk status/column updates
-        }));
+        // Enrich updates with column inference
+        const enrichedUpdates = await Promise.all(
+          input.updates.map(async (update) => {
+            let columnId = update.column_id;
 
-        const result = await client.bulkUpdateTasks(updates);
+            // Auto-infer column if status changed but column not specified
+            if (update.status && !update.column_id) {
+              try {
+                const task = await client.getTask(update.task_id);
+
+                if (task.project_id) {
+                  const columns = await client.getProjectColumns(task.project_id);
+
+                  // Use required=false to not fail the entire bulk operation
+                  const inferredColumn = inferColumnFromStatus(
+                    columns,
+                    update.status,
+                    { required: false }
+                  );
+
+                  if (inferredColumn) {
+                    columnId = inferredColumn.id;
+                    console.log(
+                      `[Joan MCP] Auto-inferred column for task #${task.task_number}: ` +
+                      `status=${update.status} → column=${inferredColumn.name}`
+                    );
+                  } else {
+                    console.warn(
+                      `[Joan MCP] Could not infer column for task #${task.task_number} ` +
+                      `with status=${update.status}. Column unchanged.`
+                    );
+                  }
+                }
+              } catch (error) {
+                console.error(
+                  `[Joan MCP] Failed to infer column for task ${update.task_id}:`,
+                  error
+                );
+                // Continue with other tasks even if one fails
+              }
+            }
+
+            return {
+              id: update.task_id,
+              column_id: columnId,
+              status: update.status ? statusToBackend(update.status) : undefined,
+              order_index: 0, // Required by API but we just use 0 for bulk status/column updates
+            };
+          })
+        );
+
+        const result = await client.bulkUpdateTasks(enrichedUpdates);
 
         return {
           content: [{

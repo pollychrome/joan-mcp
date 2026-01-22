@@ -15,24 +15,86 @@ import type { ProjectColumn } from '../client/types.js';
  * Used for case-insensitive matching against project columns
  */
 const STATUS_COLUMN_NAMES: Record<string, string[]> = {
-  'todo': ['to do', 'todo', 'to-do', 'backlog', 'pending', 'new'],
-  'in_progress': ['in progress', 'in_progress', 'in-progress', 'doing', 'wip', 'working', 'active'],
-  'done': ['done', 'completed', 'complete', 'finished', 'closed'],
-  'cancelled': ['cancelled', 'canceled', 'archived', 'removed'],
+  'todo': ['to do', 'todo', 'to-do', 'backlog', 'pending', 'new', 'open', 'ready'],
+  'in_progress': ['in progress', 'in_progress', 'in-progress', 'doing', 'wip', 'working', 'active', 'development', 'dev'],
+  'review': ['review', 'reviewing', 'code review', 'testing', 'qa', 'test'],
+  'deploy': ['deploy', 'deployment', 'deploying', 'staging', 'production'],
+  'done': ['done', 'completed', 'complete', 'finished', 'closed', 'resolved'],
+  'cancelled': ['cancelled', 'canceled', 'archived', 'removed', 'rejected', 'abandoned'],
+  'blocked': ['blocked', 'waiting', 'on hold', 'paused'],
 };
+
+/**
+ * Calculate Levenshtein distance between two strings
+ * Used for fuzzy matching of column names to handle typos
+ */
+function levenshteinDistance(a: string, b: string): number {
+  const matrix: number[][] = [];
+
+  // Initialize first column
+  for (let i = 0; i <= b.length; i++) {
+    matrix[i] = [i];
+  }
+
+  // Initialize first row
+  for (let j = 0; j <= a.length; j++) {
+    matrix[0][j] = j;
+  }
+
+  // Fill in the rest of the matrix
+  for (let i = 1; i <= b.length; i++) {
+    for (let j = 1; j <= a.length; j++) {
+      if (b.charAt(i - 1) === a.charAt(j - 1)) {
+        matrix[i][j] = matrix[i - 1][j - 1];
+      } else {
+        matrix[i][j] = Math.min(
+          matrix[i - 1][j - 1] + 1, // substitution
+          matrix[i][j - 1] + 1,     // insertion
+          matrix[i - 1][j] + 1      // deletion
+        );
+      }
+    }
+  }
+
+  return matrix[b.length][a.length];
+}
 
 /**
  * Find a column that matches the given status by name
  * Uses case-insensitive matching against common column name variations
+ * Now includes fuzzy matching with Levenshtein distance
  */
 function findColumnByName(columns: ProjectColumn[], status: string): ProjectColumn | null {
-  const targetNames = STATUS_COLUMN_NAMES[status] || [];
+  const normalizedStatus = status.toLowerCase().trim();
 
-  for (const targetName of targetNames) {
-    const match = columns.find(col =>
-      col.name.toLowerCase().trim() === targetName.toLowerCase()
-    );
-    if (match) return match;
+  // Strategy 1: Exact match (case-insensitive)
+  for (const col of columns) {
+    if (col.name.toLowerCase().trim() === normalizedStatus) {
+      return col;
+    }
+  }
+
+  // Strategy 2: Pattern match against known aliases
+  for (const [_key, aliases] of Object.entries(STATUS_COLUMN_NAMES)) {
+    if (aliases.includes(normalizedStatus)) {
+      // Found the status in our patterns, now find matching column
+      for (const col of columns) {
+        if (aliases.includes(col.name.toLowerCase().trim())) {
+          return col;
+        }
+      }
+    }
+  }
+
+  // Strategy 3: Fuzzy match (Levenshtein distance ≤ 2)
+  for (const col of columns) {
+    const distance = levenshteinDistance(col.name.toLowerCase().trim(), normalizedStatus);
+    if (distance <= 2) {
+      console.log(
+        `[Joan MCP] Fuzzy matched column '${col.name}' for status '${status}' (distance: ${distance})`
+      );
+      return col;
+    }
   }
 
   return null;
@@ -79,27 +141,54 @@ export function findDefaultColumn(columns: ProjectColumn[]): ProjectColumn | nul
  * Infer the appropriate column for a given status
  *
  * Strategy:
- * 1. Try to match by column name (case-insensitive)
+ * 1. Try to match by column name (case-insensitive, with fuzzy matching)
  * 2. Fall back to position-based inference for 'todo' and 'done'
- * 3. Return null if no suitable column found
+ * 3. Log warning and optionally throw if no match found
  *
  * @param columns - Project's Kanban columns
  * @param status - Task status ('todo' | 'in_progress' | 'done' | 'cancelled')
- * @returns Matching column or null if no match
+ * @param options - Configuration options
+ * @param options.required - If true, throw error when column cannot be inferred
+ * @returns Matching column or null if no match (when required=false)
+ * @throws Error when required=true and no column can be inferred
  */
 export function inferColumnFromStatus(
   columns: ProjectColumn[],
-  status: string
+  status: string,
+  options: { required?: boolean } = {}
 ): ProjectColumn | null {
-  if (columns.length === 0) return null;
+  if (columns.length === 0) {
+    const error = `[Joan MCP] No columns available for status='${status}'`;
+    console.warn(error);
+    if (options.required) {
+      throw new Error(`Cannot find column for status='${status}'. Project has no columns.`);
+    }
+    return null;
+  }
 
-  // Strategy 1: Match by name
+  // Strategy 1: Match by name (includes exact, pattern, and fuzzy matching)
   const byName = findColumnByName(columns, status);
   if (byName) return byName;
 
   // Strategy 2: Fall back to position for todo/done
   const byPosition = findColumnByPosition(columns, status);
   if (byPosition) return byPosition;
+
+  // No match found - log warning and optionally throw
+  const availableColumns = columns.map(c => c.name).join(', ');
+  console.warn(
+    `[Joan MCP] Failed to infer column for status='${status}'. ` +
+    `Available columns: ${availableColumns}`
+  );
+
+  if (options.required) {
+    const expectedNames = STATUS_COLUMN_NAMES[status]?.join(', ') || 'unknown';
+    throw new Error(
+      `Cannot find column for status='${status}'. ` +
+      `Expected column names: ${expectedNames}. ` +
+      `Available: ${availableColumns}`
+    );
+  }
 
   return null;
 }
