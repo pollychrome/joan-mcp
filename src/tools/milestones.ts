@@ -6,6 +6,7 @@ import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
 import type { JoanApiClient } from '../client/api-client.js';
 import { formatErrorForMcp } from '../utils/errors.js';
+import { ensureAuthenticated } from '../index.js';
 
 export function registerMilestoneTools(server: McpServer, client: JoanApiClient): void {
   // List Milestones (Read)
@@ -19,6 +20,7 @@ export function registerMilestoneTools(server: McpServer, client: JoanApiClient)
     },
     async (input) => {
       try {
+        await ensureAuthenticated(client);
         const milestones = await client.listMilestones(input.project_id, {
           status: input.status,
           include_tasks: input.include_tasks,
@@ -64,6 +66,7 @@ export function registerMilestoneTools(server: McpServer, client: JoanApiClient)
     },
     async (input) => {
       try {
+        await ensureAuthenticated(client);
         const milestone = await client.getMilestone(input.project_id, input.milestone_id);
 
         return {
@@ -91,6 +94,7 @@ export function registerMilestoneTools(server: McpServer, client: JoanApiClient)
     },
     async (input) => {
       try {
+        await ensureAuthenticated(client);
         const milestone = await client.createMilestone(input.project_id, {
           name: input.name,
           description: input.description,
@@ -125,6 +129,7 @@ export function registerMilestoneTools(server: McpServer, client: JoanApiClient)
     },
     async (input) => {
       try {
+        await ensureAuthenticated(client);
         const milestone = await client.updateMilestone(input.project_id, input.milestone_id, {
           name: input.name,
           description: input.description,
@@ -155,6 +160,7 @@ export function registerMilestoneTools(server: McpServer, client: JoanApiClient)
     },
     async (input) => {
       try {
+        await ensureAuthenticated(client);
         await client.deleteMilestone(input.project_id, input.milestone_id);
 
         return {
@@ -180,6 +186,7 @@ export function registerMilestoneTools(server: McpServer, client: JoanApiClient)
     },
     async (input) => {
       try {
+        await ensureAuthenticated(client);
         await client.linkTasksToMilestone(input.project_id, input.milestone_id, input.task_ids);
 
         return {
@@ -205,6 +212,7 @@ export function registerMilestoneTools(server: McpServer, client: JoanApiClient)
     },
     async (input) => {
       try {
+        await ensureAuthenticated(client);
         await client.unlinkTaskFromMilestone(input.project_id, input.milestone_id, input.task_id);
 
         return {

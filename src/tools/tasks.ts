@@ -8,6 +8,7 @@ import type { JoanApiClient } from '../client/api-client.js';
 import { formatErrorForMcp } from '../utils/errors.js';
 import { formatTask, formatTaskInput, statusToBackend } from '../utils/converters.js';
 import { inferColumnFromStatus } from '../utils/column-mapper.js';
+import { ensureAuthenticated } from '../index.js';
 
 export function registerTaskTools(server: McpServer, client: JoanApiClient): void {
   // List Tasks (Read)
@@ -21,6 +22,8 @@ export function registerTaskTools(server: McpServer, client: JoanApiClient): voi
     },
     async (input) => {
       try {
+        await ensureAuthenticated(client);
+
         // Convert status filter from frontend format to backend format for API query
         const backendStatus = input.status ? statusToBackend(input.status) : undefined;
 
@@ -81,6 +84,7 @@ export function registerTaskTools(server: McpServer, client: JoanApiClient): voi
     },
     async (input) => {
       try {
+        await ensureAuthenticated(client);
         const task = await client.getTaskWithSubtasks(input.task_id);
 
         return {
@@ -114,6 +118,7 @@ export function registerTaskTools(server: McpServer, client: JoanApiClient): voi
     },
     async (input) => {
       try {
+        await ensureAuthenticated(client);
         let inferredColumnId: string | undefined;
 
         // Infer column from status when creating in a project
@@ -182,6 +187,7 @@ export function registerTaskTools(server: McpServer, client: JoanApiClient): voi
     },
     async (input) => {
       try {
+        await ensureAuthenticated(client);
         let inferredColumnId: string | undefined;
 
         // Auto-sync column when status changes (unless explicit column_id provided or sync disabled)
@@ -254,6 +260,7 @@ export function registerTaskTools(server: McpServer, client: JoanApiClient): voi
     },
     async (input) => {
       try {
+        await ensureAuthenticated(client);
         // Get task info before completing (need project_id and task_number)
         const task = await client.getTask(input.task_id);
 
@@ -311,6 +318,7 @@ export function registerTaskTools(server: McpServer, client: JoanApiClient): voi
     },
     async (input) => {
       try {
+        await ensureAuthenticated(client);
         await client.deleteTask(input.task_id);
 
         return {
@@ -338,6 +346,7 @@ export function registerTaskTools(server: McpServer, client: JoanApiClient): voi
     },
     async (input) => {
       try {
+        await ensureAuthenticated(client);
         // Enrich updates with column inference
         const enrichedUpdates = await Promise.all(
           input.updates.map(async (update) => {

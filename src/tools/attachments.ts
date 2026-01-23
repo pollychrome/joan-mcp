@@ -8,6 +8,7 @@ import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
 import type { JoanApiClient } from '../client/api-client.js';
 import { formatErrorForMcp } from '../utils/errors.js';
+import { ensureAuthenticated } from '../index.js';
 import type { AttachmentEntityType, AttachmentCategory } from '../client/types.js';
 
 // Common MIME type mappings
@@ -110,6 +111,7 @@ export function registerAttachmentTools(server: McpServer, client: JoanApiClient
     },
     async (input) => {
       try {
+        await ensureAuthenticated(client);
         let fileBuffer: Buffer;
         let filename: string;
         let mimeType: string;
@@ -224,6 +226,7 @@ export function registerAttachmentTools(server: McpServer, client: JoanApiClient
     },
     async (input) => {
       try {
+        await ensureAuthenticated(client);
         const attachments = await client.listAttachmentsByEntity(
           input.entity_type as AttachmentEntityType,
           input.entity_id
@@ -264,6 +267,7 @@ export function registerAttachmentTools(server: McpServer, client: JoanApiClient
     },
     async (input) => {
       try {
+        await ensureAuthenticated(client);
         const attachment = await client.getAttachmentMetadata(input.attachment_id);
 
         const info = [
@@ -316,6 +320,7 @@ export function registerAttachmentTools(server: McpServer, client: JoanApiClient
     },
     async (input) => {
       try {
+        await ensureAuthenticated(client);
         const updateData: Record<string, unknown> = {};
         if (input.display_name !== undefined) updateData.display_name = input.display_name;
         if (input.description !== undefined) updateData.description = input.description;
@@ -345,6 +350,7 @@ export function registerAttachmentTools(server: McpServer, client: JoanApiClient
     },
     async (input) => {
       try {
+        await ensureAuthenticated(client);
         await client.deleteAttachment(input.attachment_id);
 
         return {
@@ -369,6 +375,7 @@ export function registerAttachmentTools(server: McpServer, client: JoanApiClient
     },
     async (input) => {
       try {
+        await ensureAuthenticated(client);
         const info = await client.getAttachmentDownloadUrl(
           input.attachment_id,
           input.expires_in
@@ -398,6 +405,7 @@ export function registerAttachmentTools(server: McpServer, client: JoanApiClient
     },
     async (input) => {
       try {
+        await ensureAuthenticated(client);
         const hierarchy = await client.getProjectAttachmentHierarchy(input.project_id);
 
         const lines: string[] = [];
@@ -475,6 +483,7 @@ export function registerAttachmentTools(server: McpServer, client: JoanApiClient
     {},
     async () => {
       try {
+        await ensureAuthenticated(client);
         const usage = await client.getStorageUsage();
 
         const lines = [

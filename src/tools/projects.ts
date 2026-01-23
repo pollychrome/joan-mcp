@@ -6,6 +6,7 @@ import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
 import type { JoanApiClient } from '../client/api-client.js';
 import { formatErrorForMcp } from '../utils/errors.js';
+import { ensureAuthenticated } from '../index.js';
 import { formatColumnsForDisplay } from '../utils/column-mapper.js';
 
 export function registerProjectTools(server: McpServer, client: JoanApiClient): void {
@@ -19,6 +20,7 @@ export function registerProjectTools(server: McpServer, client: JoanApiClient): 
     },
     async (input) => {
       try {
+        await ensureAuthenticated(client);
         const projects = await client.listProjects({
           status: input.status,
           include_members: input.include_members,
@@ -58,6 +60,7 @@ export function registerProjectTools(server: McpServer, client: JoanApiClient): 
     },
     async (input) => {
       try {
+        await ensureAuthenticated(client);
         const project = await client.getProject(input.project_id);
 
         return {
@@ -85,6 +88,7 @@ export function registerProjectTools(server: McpServer, client: JoanApiClient): 
     },
     async (input) => {
       try {
+        await ensureAuthenticated(client);
         const project = await client.createProject({
           name: input.name,
           description: input.description,
@@ -119,6 +123,7 @@ export function registerProjectTools(server: McpServer, client: JoanApiClient): 
     },
     async (input) => {
       try {
+        await ensureAuthenticated(client);
         const project = await client.updateProject(input.project_id, {
           name: input.name,
           description: input.description,
@@ -148,6 +153,7 @@ export function registerProjectTools(server: McpServer, client: JoanApiClient): 
     },
     async (input) => {
       try {
+        await ensureAuthenticated(client);
         const columns = await client.getProjectColumns(input.project_id);
 
         return {
@@ -175,6 +181,7 @@ export function registerProjectTools(server: McpServer, client: JoanApiClient): 
     },
     async (input) => {
       try {
+        await ensureAuthenticated(client);
         const column = await client.createColumn(input.project_id, {
           name: input.name,
           position: input.position,
@@ -207,6 +214,7 @@ export function registerProjectTools(server: McpServer, client: JoanApiClient): 
     },
     async (input) => {
       try {
+        await ensureAuthenticated(client);
         const column = await client.updateColumn(input.project_id, input.column_id, {
           name: input.name,
           default_status: input.default_status,
@@ -236,6 +244,7 @@ export function registerProjectTools(server: McpServer, client: JoanApiClient): 
     },
     async (input) => {
       try {
+        await ensureAuthenticated(client);
         const result = await client.deleteColumn(
           input.project_id,
           input.column_id,
@@ -269,6 +278,7 @@ export function registerProjectTools(server: McpServer, client: JoanApiClient): 
     },
     async (input) => {
       try {
+        await ensureAuthenticated(client);
         const columns = await client.reorderColumns(input.project_id, input.column_order);
 
         const sortedNames = columns

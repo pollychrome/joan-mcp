@@ -9,6 +9,7 @@ import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
 import type { JoanApiClient } from '../client/api-client.js';
 import { formatErrorForMcp } from '../utils/errors.js';
+import { ensureAuthenticated } from '../index.js';
 
 // Predefined color palette (matches backend TAG_COLORS)
 const TAG_COLORS = [
@@ -44,6 +45,7 @@ export function registerProjectTagTools(server: McpServer, client: JoanApiClient
     },
     async (input) => {
       try {
+        await ensureAuthenticated(client);
         const tags = await client.listProjectTags(input.project_id);
 
         if (tags.length === 0) {
@@ -81,6 +83,7 @@ export function registerProjectTagTools(server: McpServer, client: JoanApiClient
     },
     async (input) => {
       try {
+        await ensureAuthenticated(client);
         const tag = await client.getProjectTag(input.project_id, input.tag_id);
 
         return {
@@ -107,6 +110,7 @@ export function registerProjectTagTools(server: McpServer, client: JoanApiClient
     },
     async (input) => {
       try {
+        await ensureAuthenticated(client);
         const tag = await client.createProjectTag(input.project_id, {
           name: input.name,
           color: input.color,
@@ -136,6 +140,7 @@ export function registerProjectTagTools(server: McpServer, client: JoanApiClient
     },
     async (input) => {
       try {
+        await ensureAuthenticated(client);
         const tag = await client.updateProjectTag(input.project_id, input.tag_id, {
           name: input.name,
           color: input.color,
@@ -163,6 +168,7 @@ export function registerProjectTagTools(server: McpServer, client: JoanApiClient
     },
     async (input) => {
       try {
+        await ensureAuthenticated(client);
         await client.deleteProjectTag(input.project_id, input.tag_id);
 
         return {
@@ -189,6 +195,7 @@ export function registerProjectTagTools(server: McpServer, client: JoanApiClient
     },
     async (input) => {
       try {
+        await ensureAuthenticated(client);
         const tags = await client.getTaskTags(input.project_id, input.task_id);
 
         if (tags.length === 0) {
@@ -227,6 +234,7 @@ export function registerProjectTagTools(server: McpServer, client: JoanApiClient
     },
     async (input) => {
       try {
+        await ensureAuthenticated(client);
         await client.addTagToTask(input.project_id, input.task_id, input.tag_id);
 
         return {
@@ -252,6 +260,7 @@ export function registerProjectTagTools(server: McpServer, client: JoanApiClient
     },
     async (input) => {
       try {
+        await ensureAuthenticated(client);
         await client.removeTagFromTask(input.project_id, input.task_id, input.tag_id);
 
         return {
@@ -277,6 +286,7 @@ export function registerProjectTagTools(server: McpServer, client: JoanApiClient
     },
     async (input) => {
       try {
+        await ensureAuthenticated(client);
         const tags = await client.setTaskTags(input.project_id, input.task_id, input.tag_ids);
 
         if (tags.length === 0) {

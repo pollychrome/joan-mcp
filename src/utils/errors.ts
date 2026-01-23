@@ -2,6 +2,8 @@
  * Error handling utilities for Joan MCP server
  */
 
+import { TimeoutError } from './timeout.js';
+
 export class JoanApiError extends Error {
   constructor(
     public statusCode: number,
@@ -35,6 +37,13 @@ export class ConfigurationError extends Error {
  * Format an error for MCP response content
  */
 export function formatErrorForMcp(error: unknown): { type: 'text'; text: string }[] {
+  if (error instanceof TimeoutError) {
+    return [{
+      type: 'text',
+      text: `Request timeout: The Joan API did not respond within ${error.timeoutMs}ms. Check network connectivity and API availability.`,
+    }];
+  }
+
   if (error instanceof JoanApiError) {
     switch (error.statusCode) {
       case 401:

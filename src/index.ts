@@ -14,7 +14,46 @@ import { registerAllTools } from './tools/index.js';
 import { registerAllResources } from './resources/index.js';
 
 const SERVER_NAME = 'joan-mcp';
-const SERVER_VERSION = '1.0.0';
+const SERVER_VERSION = '2.1.0';
+
+/**
+ * Logging helper that outputs to stderr with timestamps
+ */
+function logInfo(message: string): void {
+  console.error(`[${new Date().toISOString()}] [Joan MCP] ${message}`);
+}
+
+/**
+ * Global state for lazy authentication verification
+ */
+let authVerified = false;
+let authVerificationPromise: Promise<void> | null = null;
+
+/**
+ * Ensure authentication is valid before making API calls.
+ * Verifies lazily on first use, not during server startup.
+ */
+export async function ensureAuthenticated(apiClient: JoanApiClient): Promise<void> {
+  if (authVerified) return; // Already verified
+  if (authVerificationPromise) return authVerificationPromise; // Verification in progress
+
+  authVerificationPromise = (async () => {
+    try {
+      await apiClient.getCurrentUser();
+      logInfo('Auth verification succeeded');
+      authVerified = true;
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      throw new Error(
+        `Authentication failed: ${errorMessage}. Run "joan-mcp login" or check JOAN_AUTH_TOKEN.`
+      );
+    } finally {
+      authVerificationPromise = null;
+    }
+  })();
+
+  return authVerificationPromise;
+}
 
 /**
  * Server instructions that describe Joan MCP to AI assistants.
@@ -93,22 +132,26 @@ Joan is a productivity application for managing projects, tasks, goals, mileston
  * Start the MCP server
  */
 export async function startServer(): Promise<void> {
-  // Load configuration
+  const serverStartTime = Date.now();
+
+  // Load configuration (fast)
   const config = await loadConfig();
 
-  // Initialize API client
+  // Initialize API client (fast)
   const apiClient = new JoanApiClient({
     baseUrl: config.apiUrl,
     authToken: config.authToken,
   });
 
-  // Verify auth token works
-  try {
-    await apiClient.getCurrentUser();
-  } catch (error) {
-    console.error('Failed to verify authentication. Please check your token.');
-    console.error('Run "joan-mcp login" to authenticate or set JOAN_AUTH_TOKEN.');
-    process.exit(1);
+  // Optional background auth verification (non-blocking, enabled by default)
+  // Set JOAN_MCP_VERIFY_ON_STARTUP=false to disable completely
+  if (process.env.JOAN_MCP_VERIFY_ON_STARTUP !== 'false') {
+    apiClient.getCurrentUser()
+      .then(() => logInfo('Background auth verification succeeded'))
+      .catch((error) => {
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        logInfo(`Background auth verification failed: ${errorMessage}`);
+      });
   }
 
   // Create MCP server with instructions for AI assistants
@@ -132,8 +175,8 @@ export async function startServer(): Promise<void> {
   const transport = new StdioServerTransport();
   await server.connect(transport);
 
-  // Log to stderr so it doesn't interfere with MCP protocol
-  console.error(`${SERVER_NAME} v${SERVER_VERSION} started`);
+  const startupTime = Date.now() - serverStartTime;
+  logInfo(`Server ready (handshake complete in ${startupTime}ms)`);
 }
 
 // Export for CLI

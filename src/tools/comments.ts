@@ -6,6 +6,7 @@ import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
 import type { JoanApiClient } from '../client/api-client.js';
 import { formatErrorForMcp } from '../utils/errors.js';
+import { ensureAuthenticated } from '../index.js';
 
 export function registerCommentTools(server: McpServer, client: JoanApiClient): void {
   // ============ Task Comments ============
@@ -19,6 +20,7 @@ export function registerCommentTools(server: McpServer, client: JoanApiClient): 
     },
     async (input) => {
       try {
+        await ensureAuthenticated(client);
         const comments = await client.listTaskComments(input.task_id);
 
         if (comments.length === 0) {
@@ -58,6 +60,7 @@ export function registerCommentTools(server: McpServer, client: JoanApiClient): 
     },
     async (input) => {
       try {
+        await ensureAuthenticated(client);
         const comment = await client.createTaskComment(input.task_id, {
           content: input.content,
         });
@@ -85,6 +88,7 @@ export function registerCommentTools(server: McpServer, client: JoanApiClient): 
     },
     async (input) => {
       try {
+        await ensureAuthenticated(client);
         await client.updateTaskComment(input.task_id, input.comment_id, {
           content: input.content,
         });
@@ -111,6 +115,7 @@ export function registerCommentTools(server: McpServer, client: JoanApiClient): 
     },
     async (input) => {
       try {
+        await ensureAuthenticated(client);
         await client.deleteTaskComment(input.task_id, input.comment_id);
 
         return {
@@ -137,6 +142,7 @@ export function registerCommentTools(server: McpServer, client: JoanApiClient): 
     },
     async (input) => {
       try {
+        await ensureAuthenticated(client);
         const comments = await client.listMilestoneComments(
           input.project_id,
           input.milestone_id
@@ -180,6 +186,7 @@ export function registerCommentTools(server: McpServer, client: JoanApiClient): 
     },
     async (input) => {
       try {
+        await ensureAuthenticated(client);
         const comment = await client.createMilestoneComment(
           input.project_id,
           input.milestone_id,
@@ -210,6 +217,7 @@ export function registerCommentTools(server: McpServer, client: JoanApiClient): 
     },
     async (input) => {
       try {
+        await ensureAuthenticated(client);
         await client.updateMilestoneComment(
           input.project_id,
           input.milestone_id,
@@ -240,6 +248,7 @@ export function registerCommentTools(server: McpServer, client: JoanApiClient): 
     },
     async (input) => {
       try {
+        await ensureAuthenticated(client);
         await client.deleteMilestoneComment(
           input.project_id,
           input.milestone_id,

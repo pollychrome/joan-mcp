@@ -3,6 +3,7 @@
  */
 
 import { JoanApiError } from '../utils/errors.js';
+import { fetchWithTimeout, getDefaultTimeout } from '../utils/timeout.js';
 import type {
   Project,
   ProjectWithDetails,
@@ -55,15 +56,18 @@ import type {
 export interface JoanApiClientConfig {
   baseUrl: string;
   authToken: string;
+  timeoutMs?: number;
 }
 
 export class JoanApiClient {
   private baseUrl: string;
   private authToken: string;
+  private timeoutMs: number;
 
   constructor(config: JoanApiClientConfig) {
     this.baseUrl = config.baseUrl.replace(/\/$/, ''); // Remove trailing slash
     this.authToken = config.authToken;
+    this.timeoutMs = config.timeoutMs ?? getDefaultTimeout();
   }
 
   private async request<T>(
@@ -93,10 +97,11 @@ export class JoanApiClient {
       'Content-Type': 'application/json',
     };
 
-    const response = await fetch(url, {
+    const response = await fetchWithTimeout(url, {
       method,
       headers,
       body: body ? JSON.stringify(body) : undefined,
+      timeoutMs: this.timeoutMs,
     });
 
     if (!response.ok) {
@@ -557,7 +562,7 @@ export class JoanApiClient {
 
     const body = Buffer.concat(parts);
 
-    const response = await fetch(url, {
+    const response = await fetchWithTimeout(url, {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${this.authToken}`,
@@ -565,6 +570,7 @@ export class JoanApiClient {
         'Content-Length': String(body.length),
       },
       body,
+      timeoutMs: this.timeoutMs,
     });
 
     if (!response.ok) {

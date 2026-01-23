@@ -6,6 +6,7 @@ import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
 import type { JoanApiClient } from '../client/api-client.js';
 import { formatErrorForMcp } from '../utils/errors.js';
+import { ensureAuthenticated } from '../index.js';
 
 export function registerNoteTools(server: McpServer, client: JoanApiClient): void {
   // Create Note
@@ -21,6 +22,7 @@ export function registerNoteTools(server: McpServer, client: JoanApiClient): voi
     },
     async (input) => {
       try {
+        await ensureAuthenticated(client);
         const note = await client.createNote({
           title: input.title,
           content: input.content,
@@ -56,6 +58,7 @@ export function registerNoteTools(server: McpServer, client: JoanApiClient): voi
     },
     async (input) => {
       try {
+        await ensureAuthenticated(client);
         const note = await client.updateNote(input.note_id, {
           title: input.title,
           content: input.content,
@@ -86,6 +89,7 @@ export function registerNoteTools(server: McpServer, client: JoanApiClient): voi
     },
     async (input) => {
       try {
+        await ensureAuthenticated(client);
         await client.deleteNote(input.note_id);
 
         return {

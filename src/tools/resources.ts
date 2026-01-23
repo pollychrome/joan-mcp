@@ -6,6 +6,7 @@ import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
 import type { JoanApiClient } from '../client/api-client.js';
 import { formatErrorForMcp } from '../utils/errors.js';
+import { ensureAuthenticated } from '../index.js';
 import type { ResourceType } from '../client/types.js';
 
 const resourceTypeSchema = z.enum(['link', 'note', 'article', 'video', 'book', 'tool', 'guide']);
@@ -34,6 +35,7 @@ export function registerResourceTools(server: McpServer, client: JoanApiClient):
     },
     async (input) => {
       try {
+        await ensureAuthenticated(client);
         const resources = await client.listTaskResources(input.task_id, input.type);
 
         if (resources.length === 0) {
@@ -74,6 +76,7 @@ export function registerResourceTools(server: McpServer, client: JoanApiClient):
     },
     async (input) => {
       try {
+        await ensureAuthenticated(client);
         // Validate URL is provided for link type
         if (input.type === 'link' && !input.url) {
           return {
@@ -120,6 +123,7 @@ export function registerResourceTools(server: McpServer, client: JoanApiClient):
     },
     async (input) => {
       try {
+        await ensureAuthenticated(client);
         const updateData: Record<string, unknown> = {};
         if (input.title !== undefined) updateData.title = input.title;
         if (input.url !== undefined) updateData.url = input.url;
@@ -155,6 +159,7 @@ export function registerResourceTools(server: McpServer, client: JoanApiClient):
     },
     async (input) => {
       try {
+        await ensureAuthenticated(client);
         await client.deleteTaskResource(input.task_id, input.resource_id);
 
         return {
@@ -180,6 +185,7 @@ export function registerResourceTools(server: McpServer, client: JoanApiClient):
     },
     async (input) => {
       try {
+        await ensureAuthenticated(client);
         const resources = await client.listProjectResources(input.project_id);
 
         if (resources.length === 0) {
@@ -220,6 +226,7 @@ export function registerResourceTools(server: McpServer, client: JoanApiClient):
     },
     async (input) => {
       try {
+        await ensureAuthenticated(client);
         if (input.type === 'link' && !input.url) {
           return {
             content: [{
@@ -265,6 +272,7 @@ export function registerResourceTools(server: McpServer, client: JoanApiClient):
     },
     async (input) => {
       try {
+        await ensureAuthenticated(client);
         const updateData: Record<string, unknown> = {};
         if (input.title !== undefined) updateData.title = input.title;
         if (input.url !== undefined) updateData.url = input.url;
@@ -300,6 +308,7 @@ export function registerResourceTools(server: McpServer, client: JoanApiClient):
     },
     async (input) => {
       try {
+        await ensureAuthenticated(client);
         await client.deleteProjectResource(input.project_id, input.resource_id);
 
         return {
@@ -326,6 +335,7 @@ export function registerResourceTools(server: McpServer, client: JoanApiClient):
     },
     async (input) => {
       try {
+        await ensureAuthenticated(client);
         const resources = await client.listMilestoneResources(
           input.project_id,
           input.milestone_id
@@ -370,6 +380,7 @@ export function registerResourceTools(server: McpServer, client: JoanApiClient):
     },
     async (input) => {
       try {
+        await ensureAuthenticated(client);
         if (input.type === 'link' && !input.url) {
           return {
             content: [{
@@ -420,6 +431,7 @@ export function registerResourceTools(server: McpServer, client: JoanApiClient):
     },
     async (input) => {
       try {
+        await ensureAuthenticated(client);
         const updateData: Record<string, unknown> = {};
         if (input.title !== undefined) updateData.title = input.title;
         if (input.url !== undefined) updateData.url = input.url;
@@ -457,6 +469,7 @@ export function registerResourceTools(server: McpServer, client: JoanApiClient):
     },
     async (input) => {
       try {
+        await ensureAuthenticated(client);
         await client.deleteMilestoneResource(
           input.project_id,
           input.milestone_id,

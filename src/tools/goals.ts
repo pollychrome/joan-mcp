@@ -6,6 +6,7 @@ import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
 import type { JoanApiClient } from '../client/api-client.js';
 import { formatErrorForMcp } from '../utils/errors.js';
+import { ensureAuthenticated } from '../index.js';
 
 export function registerGoalTools(server: McpServer, client: JoanApiClient): void {
   // Create Goal
@@ -20,6 +21,7 @@ export function registerGoalTools(server: McpServer, client: JoanApiClient): voi
     },
     async (input) => {
       try {
+        await ensureAuthenticated(client);
         const goal = await client.createGoal({
           title: input.title,
           description: input.description,
@@ -53,6 +55,7 @@ export function registerGoalTools(server: McpServer, client: JoanApiClient): voi
     },
     async (input) => {
       try {
+        await ensureAuthenticated(client);
         const goal = await client.updateGoal(input.goal_id, {
           title: input.title,
           description: input.description,
@@ -82,6 +85,7 @@ export function registerGoalTools(server: McpServer, client: JoanApiClient): voi
     },
     async (input) => {
       try {
+        await ensureAuthenticated(client);
         await client.deleteGoal(input.goal_id);
 
         return {
@@ -106,6 +110,7 @@ export function registerGoalTools(server: McpServer, client: JoanApiClient): voi
     },
     async (input) => {
       try {
+        await ensureAuthenticated(client);
         await client.linkTaskToGoal(input.goal_id, input.task_id);
 
         return {
@@ -130,6 +135,7 @@ export function registerGoalTools(server: McpServer, client: JoanApiClient): voi
     },
     async (input) => {
       try {
+        await ensureAuthenticated(client);
         await client.unlinkTaskFromGoal(input.goal_id, input.task_id);
 
         return {
