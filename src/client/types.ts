@@ -258,6 +258,8 @@ export interface UpdateProjectInput {
   status?: Project['status'];
   start_date?: string;
   end_date?: string;
+  webhook_url?: string | null;
+  webhook_secret?: string | null;
 }
 
 export interface CreateTaskInput {

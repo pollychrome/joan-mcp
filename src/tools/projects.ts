@@ -120,6 +120,8 @@ export function registerProjectTools(server: McpServer, client: JoanApiClient): 
       status: z.enum(['planning', 'active', 'on_hold', 'completed', 'archived']).optional().describe('New project status'),
       start_date: z.string().optional().describe('New start date (ISO 8601 format)'),
       end_date: z.string().optional().describe('New end date (ISO 8601 format)'),
+      webhook_url: z.string().url().optional().nullable().describe('Webhook URL for event notifications'),
+      webhook_secret: z.string().optional().nullable().describe('HMAC secret for webhook signature verification'),
     },
     async (input) => {
       try {
@@ -130,6 +132,8 @@ export function registerProjectTools(server: McpServer, client: JoanApiClient): 
           status: input.status,
           start_date: input.start_date,
           end_date: input.end_date,
+          webhook_url: input.webhook_url,
+          webhook_secret: input.webhook_secret,
         });
 
         return {
