@@ -7,7 +7,7 @@ import { z } from 'zod';
 import type { JoanApiClient } from '../client/api-client.js';
 import { formatErrorForMcp } from '../utils/errors.js';
 import { formatTask, formatTaskInput, statusToBackend } from '../utils/converters.js';
-import { inferColumnFromStatus } from '../utils/column-mapper.js';
+import { inferColumnFromStatus, inferStatusFromColumn } from '../utils/column-mapper.js';
 import { ensureAuthenticated } from '../index.js';
 import { logger } from '../utils/logger.js';
 
@@ -103,7 +103,7 @@ export function registerTaskTools(server: McpServer, client: JoanApiClient): voi
   // Create Task
   server.tool(
     'create_task',
-    'Create a new task in Joan. Can be associated with a project or standalone. When status is provided with a project, the task is automatically placed in the matching Kanban column.',
+    'Create a new task in Joan. Can be associated with a project or standalone. When status is provided with a project, the task is automatically placed in the matching Kanban column. When column_id is provided without status, the task status is automatically set to match the column\'s default status.',
     {
       title: z.string().min(1).describe('Task title'),
       description: z.string().optional().describe('Task description'),
@@ -121,14 +121,34 @@ export function registerTaskTools(server: McpServer, client: JoanApiClient): voi
       try {
         await ensureAuthenticated(client);
         let inferredColumnId: string | undefined;
+        let inferredStatus: string | undefined;
+        let syncDirection: 'status-to-column' | 'column-to-status' | null = null;
 
-        // Infer column from status when creating in a project
-        if (input.project_id && input.status && !input.column_id && input.sync_column !== false) {
+        // Bidirectional sync logic for project tasks
+        if (input.project_id && input.sync_column !== false) {
           try {
             const columns = await client.getProjectColumns(input.project_id);
-            const targetColumn = inferColumnFromStatus(columns, input.status);
-            if (targetColumn) {
-              inferredColumnId = targetColumn.id;
+
+            if (input.status && !input.column_id) {
+              // Status → Column: Infer column from status
+              const targetColumn = inferColumnFromStatus(columns, input.status);
+              if (targetColumn) {
+                inferredColumnId = targetColumn.id;
+                syncDirection = 'status-to-column';
+              }
+            } else if (input.column_id && !input.status) {
+              // Column → Status: Infer status from column
+              const targetColumn = columns.find(c => c.id === input.column_id);
+              if (targetColumn) {
+                const status = inferStatusFromColumn(targetColumn);
+                if (status) {
+                  inferredStatus = status;
+                  syncDirection = 'column-to-status';
+                  logger.info(
+                    `[Joan MCP] Inferred status '${status}' from column '${targetColumn.name}'`
+                  );
+                }
+              }
             }
           } catch {
             // Column inference failed - proceed without it
@@ -140,7 +160,7 @@ export function registerTaskTools(server: McpServer, client: JoanApiClient): voi
           description: input.description,
           project_id: input.project_id,
           column_id: input.column_id || inferredColumnId,
-          status: input.status,
+          status: input.status || inferredStatus,
           priority: input.priority,
           due_date: input.due_date,
           estimated_pomodoros: input.estimated_pomodoros,
@@ -155,7 +175,8 @@ export function registerTaskTools(server: McpServer, client: JoanApiClient): voi
 
         let message = `Created task "${task.title}" (ID: ${task.id})`;
         if (task.task_number) message += ` #${task.task_number}`;
-        if (inferredColumnId) message += ' in matching column';
+        if (syncDirection === 'status-to-column') message += ' in matching column';
+        if (syncDirection === 'column-to-status') message += ` with status '${inferredStatus}'`;
 
         return {
           content: [{
@@ -172,7 +193,7 @@ export function registerTaskTools(server: McpServer, client: JoanApiClient): voi
   // Update Task
   server.tool(
     'update_task',
-    'Update an existing task in Joan. When status changes, the task is automatically moved to the matching Kanban column unless sync_column is false or an explicit column_id is provided.',
+    'Update an existing task in Joan. When status changes, the task is automatically moved to the matching Kanban column unless sync_column is false or an explicit column_id is provided. When column_id changes, the task status is automatically updated to match the column\'s default status.',
     {
       task_id: z.string().uuid().describe('Task ID to update'),
       title: z.string().min(1).optional().describe('New task title'),
@@ -190,22 +211,40 @@ export function registerTaskTools(server: McpServer, client: JoanApiClient): voi
       try {
         await ensureAuthenticated(client);
         let inferredColumnId: string | undefined;
+        let inferredStatus: string | undefined;
+        let syncDirection: 'status-to-column' | 'column-to-status' | null = null;
 
-        // Auto-sync column when status changes (unless explicit column_id provided or sync disabled)
-        if (input.status && !input.column_id && input.sync_column !== false) {
+        // Bidirectional sync: status ↔ column
+        if (input.sync_column !== false) {
           try {
-            // Get task to find its project
-            const task = await client.getTask(input.task_id);
+            // Get task to find its project and current state
+            const existingTask = await client.getTask(input.task_id);
 
-            if (task.project_id) {
+            if (existingTask.project_id) {
               // Get project columns
-              const columns = await client.getProjectColumns(task.project_id);
+              const columns = await client.getProjectColumns(existingTask.project_id);
 
-              // Infer column from new status
-              const targetColumn = inferColumnFromStatus(columns, input.status);
+              if (input.status && !input.column_id) {
+                // Status → Column: Infer column from new status
+                const targetColumn = inferColumnFromStatus(columns, input.status);
 
-              if (targetColumn && targetColumn.id !== task.column_id) {
-                inferredColumnId = targetColumn.id;
+                if (targetColumn && targetColumn.id !== existingTask.column_id) {
+                  inferredColumnId = targetColumn.id;
+                  syncDirection = 'status-to-column';
+                }
+              } else if (input.column_id && !input.status) {
+                // Column → Status: Infer status from new column
+                const targetColumn = columns.find(c => c.id === input.column_id);
+                if (targetColumn && input.column_id !== existingTask.column_id) {
+                  const status = inferStatusFromColumn(targetColumn);
+                  if (status) {
+                    inferredStatus = status;
+                    syncDirection = 'column-to-status';
+                    logger.info(
+                      `[Joan MCP] Inferred status '${status}' from column '${targetColumn.name}'`
+                    );
+                  }
+                }
               }
             }
           } catch {
@@ -216,7 +255,7 @@ export function registerTaskTools(server: McpServer, client: JoanApiClient): voi
         const apiInput = formatTaskInput({
           title: input.title || '',
           description: input.description,
-          status: input.status,
+          status: input.status || inferredStatus,
           priority: input.priority,
           due_date: input.due_date,
           estimated_pomodoros: input.estimated_pomodoros,
@@ -235,9 +274,9 @@ export function registerTaskTools(server: McpServer, client: JoanApiClient): voi
 
         const task = await client.updateTask(input.task_id, apiInput);
 
-        const message = inferredColumnId
-          ? `Updated task "${task.title}" (ID: ${task.id}) and moved to matching column`
-          : `Updated task "${task.title}" (ID: ${task.id})`;
+        let message = `Updated task "${task.title}" (ID: ${task.id})`;
+        if (syncDirection === 'status-to-column') message += ' and moved to matching column';
+        if (syncDirection === 'column-to-status') message += ` with status '${inferredStatus}'`;
 
         return {
           content: [{
@@ -348,20 +387,20 @@ export function registerTaskTools(server: McpServer, client: JoanApiClient): voi
     async (input) => {
       try {
         await ensureAuthenticated(client);
-        // Enrich updates with column inference
+        // Enrich updates with bidirectional column ↔ status inference
         const enrichedUpdates = await Promise.all(
           input.updates.map(async (update) => {
             let columnId = update.column_id;
+            let status = update.status;
 
-            // Auto-infer column if status changed but column not specified
-            if (update.status && !update.column_id) {
-              try {
-                const task = await client.getTask(update.task_id);
+            try {
+              const task = await client.getTask(update.task_id);
 
-                if (task.project_id) {
-                  const columns = await client.getProjectColumns(task.project_id);
+              if (task.project_id) {
+                const columns = await client.getProjectColumns(task.project_id);
 
-                  // Use required=false to not fail the entire bulk operation
+                if (update.status && !update.column_id) {
+                  // Status → Column: Auto-infer column if status changed but column not specified
                   const inferredColumn = inferColumnFromStatus(
                     columns,
                     update.status,
@@ -380,20 +419,38 @@ export function registerTaskTools(server: McpServer, client: JoanApiClient): voi
                       `with status=${update.status}. Column unchanged.`
                     );
                   }
+                } else if (update.column_id && !update.status) {
+                  // Column → Status: Auto-infer status if column changed but status not specified
+                  const targetColumn = columns.find(c => c.id === update.column_id);
+                  if (targetColumn) {
+                    const inferredStatus = inferStatusFromColumn(targetColumn);
+                    if (inferredStatus) {
+                      status = inferredStatus;
+                      logger.info(
+                        `[Joan MCP] Auto-inferred status for task #${task.task_number}: ` +
+                        `column=${targetColumn.name} → status=${inferredStatus}`
+                      );
+                    } else {
+                      logger.warn(
+                        `[Joan MCP] Could not infer status for task #${task.task_number} ` +
+                        `from column=${targetColumn.name}. Status unchanged.`
+                      );
+                    }
+                  }
                 }
-              } catch (error) {
-                logger.error(
-                  `[Joan MCP] Failed to infer column for task ${update.task_id}:`,
-                  error
-                );
-                // Continue with other tasks even if one fails
               }
+            } catch (error) {
+              logger.error(
+                `[Joan MCP] Failed to infer column/status for task ${update.task_id}:`,
+                error
+              );
+              // Continue with other tasks even if one fails
             }
 
             return {
               id: update.task_id,
               column_id: columnId,
-              status: update.status ? statusToBackend(update.status) : undefined,
+              status: status ? statusToBackend(status) : undefined,
               order_index: 0, // Required by API but we just use 0 for bulk status/column updates
             };
           })

@@ -17,6 +17,7 @@ import { logger } from './logger.js';
  */
 const STATUS_COLUMN_NAMES: Record<string, string[]> = {
   'todo': ['to do', 'todo', 'to-do', 'backlog', 'pending', 'new', 'open', 'ready'],
+  'analyse': ['analyse', 'analyze', 'analysis', 'planning', 'requirements'],
   'in_progress': ['in progress', 'in_progress', 'in-progress', 'doing', 'wip', 'working', 'active', 'development', 'dev'],
   'review': ['review', 'reviewing', 'code review', 'testing', 'qa', 'test'],
   'deploy': ['deploy', 'deployment', 'deploying', 'staging', 'production'],
@@ -215,6 +216,52 @@ export function isDoneColumn(column: ProjectColumn): boolean {
   return doneNames.some(name =>
     column.name.toLowerCase().trim() === name.toLowerCase()
   );
+}
+
+/**
+ * Infer the appropriate status for a given column
+ * This enables bidirectional column ↔ status sync
+ *
+ * Strategy:
+ * 1. Use column's status_key if available (explicit configuration)
+ * 2. Match column name against known status patterns
+ * 3. Return null if no match found
+ *
+ * @param column - The Kanban column
+ * @returns The inferred status or null if no match
+ */
+export function inferStatusFromColumn(column: ProjectColumn): string | null {
+  // Strategy 1: Use explicit status_key if set
+  if (column.status_key) {
+    return column.status_key;
+  }
+
+  const normalizedName = column.name.toLowerCase().trim();
+
+  // Strategy 2: Match column name against known status patterns
+  for (const [status, aliases] of Object.entries(STATUS_COLUMN_NAMES)) {
+    if (aliases.some(alias => alias.toLowerCase() === normalizedName)) {
+      return status;
+    }
+  }
+
+  // Strategy 3: Fuzzy match column name to status keys (Levenshtein ≤ 2)
+  for (const [status, aliases] of Object.entries(STATUS_COLUMN_NAMES)) {
+    for (const alias of aliases) {
+      const distance = levenshteinDistance(normalizedName, alias.toLowerCase());
+      if (distance <= 2) {
+        logger.debug(
+          `[Joan MCP] Fuzzy matched status '${status}' from column '${column.name}' (distance: ${distance})`
+        );
+        return status;
+      }
+    }
+  }
+
+  logger.debug(
+    `[Joan MCP] Could not infer status from column '${column.name}'`
+  );
+  return null;
 }
 
 /**
