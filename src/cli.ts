@@ -46,6 +46,11 @@ Quick Start (after npm install -g @pollychrome/joan-mcp):
 Environment Variables:
   JOAN_AUTH_TOKEN   JWT token for authentication (alternative to login)
   JOAN_API_URL      API base URL (default: production)
+  JOAN_MCP_TIMEOUT_MS            HTTP request timeout in ms (default: 10000)
+  JOAN_MCP_CONNECT_TIMEOUT_MS    MCP handshake timeout in ms (default: 30000)
+  JOAN_MCP_SLOW_REQUEST_MS       Log warn when requests exceed this ms (disabled by default)
+  JOAN_MCP_LOG_LEVEL             debug | info | warn | error | silent (default: info)
+  JOAN_MCP_VERIFY_ON_STARTUP     Set to false to skip background auth check
 `;
 
 /**

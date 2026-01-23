@@ -4,6 +4,7 @@
 
 import { JoanApiError } from '../utils/errors.js';
 import { fetchWithTimeout, getDefaultTimeout } from '../utils/timeout.js';
+import { logger } from '../utils/logger.js';
 import type {
   Project,
   ProjectWithDetails,
@@ -97,12 +98,34 @@ export class JoanApiClient {
       'Content-Type': 'application/json',
     };
 
-    const response = await fetchWithTimeout(url, {
-      method,
-      headers,
-      body: body ? JSON.stringify(body) : undefined,
-      timeoutMs: this.timeoutMs,
-    });
+    const startTime = Date.now();
+    let response: Response;
+    try {
+      response = await fetchWithTimeout(url, {
+        method,
+        headers,
+        body: body ? JSON.stringify(body) : undefined,
+        timeoutMs: this.timeoutMs,
+      });
+    } catch (error) {
+      const elapsed = Date.now() - startTime;
+      if (logger.isEnabled('debug')) {
+        const logTarget = url.startsWith(this.baseUrl) ? url.slice(this.baseUrl.length) : url;
+        logger.debug(`HTTP ${method} ${logTarget} failed in ${elapsed}ms`);
+      }
+      throw error;
+    }
+
+    const elapsed = Date.now() - startTime;
+    const slowThreshold = process.env.JOAN_MCP_SLOW_REQUEST_MS
+      ? parseInt(process.env.JOAN_MCP_SLOW_REQUEST_MS, 10)
+      : 0;
+    const logTarget = url.startsWith(this.baseUrl) ? url.slice(this.baseUrl.length) : url;
+    if (slowThreshold > 0 && elapsed >= slowThreshold) {
+      logger.warn(`Slow request ${method} ${logTarget} (${response.status}) in ${elapsed}ms`);
+    } else if (logger.isEnabled('debug')) {
+      logger.debug(`HTTP ${method} ${logTarget} (${response.status}) in ${elapsed}ms`);
+    }
 
     if (!response.ok) {
       let errorMessage = 'API request failed';

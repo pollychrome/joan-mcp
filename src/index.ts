@@ -12,16 +12,11 @@ import { loadConfig } from './config.js';
 import { JoanApiClient } from './client/api-client.js';
 import { registerAllTools } from './tools/index.js';
 import { registerAllResources } from './resources/index.js';
+import { withTimeout } from './utils/timeout.js';
+import { logger } from './utils/logger.js';
 
 const SERVER_NAME = 'joan-mcp';
-const SERVER_VERSION = '2.1.0';
-
-/**
- * Logging helper that outputs to stderr with timestamps
- */
-function logInfo(message: string): void {
-  console.error(`[${new Date().toISOString()}] [Joan MCP] ${message}`);
-}
+const SERVER_VERSION = '2.2.0';
 
 /**
  * Global state for lazy authentication verification
@@ -40,7 +35,7 @@ export async function ensureAuthenticated(apiClient: JoanApiClient): Promise<voi
   authVerificationPromise = (async () => {
     try {
       await apiClient.getCurrentUser();
-      logInfo('Auth verification succeeded');
+      logger.info('Auth verification succeeded');
       authVerified = true;
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
@@ -133,28 +128,34 @@ Joan is a productivity application for managing projects, tasks, goals, mileston
  */
 export async function startServer(): Promise<void> {
   const serverStartTime = Date.now();
+  logger.info('Starting server');
 
   // Load configuration (fast)
+  const configStart = Date.now();
   const config = await loadConfig();
+  logger.debug(`Configuration loaded in ${Date.now() - configStart}ms`);
 
   // Initialize API client (fast)
+  const clientStart = Date.now();
   const apiClient = new JoanApiClient({
     baseUrl: config.apiUrl,
     authToken: config.authToken,
   });
+  logger.debug(`API client initialized in ${Date.now() - clientStart}ms`);
 
   // Optional background auth verification (non-blocking, enabled by default)
   // Set JOAN_MCP_VERIFY_ON_STARTUP=false to disable completely
   if (process.env.JOAN_MCP_VERIFY_ON_STARTUP !== 'false') {
     apiClient.getCurrentUser()
-      .then(() => logInfo('Background auth verification succeeded'))
+      .then(() => logger.info('Background auth verification succeeded'))
       .catch((error) => {
         const errorMessage = error instanceof Error ? error.message : String(error);
-        logInfo(`Background auth verification failed: ${errorMessage}`);
+        logger.warn(`Background auth verification failed: ${errorMessage}`);
       });
   }
 
   // Create MCP server with instructions for AI assistants
+  const serverCreateStart = Date.now();
   const server = new McpServer(
     {
       name: SERVER_NAME,
@@ -164,19 +165,37 @@ export async function startServer(): Promise<void> {
       instructions: SERVER_INSTRUCTIONS,
     }
   );
+  logger.debug(`MCP server created in ${Date.now() - serverCreateStart}ms`);
 
   // Register all tools (write operations)
+  const toolsStart = Date.now();
   registerAllTools(server, apiClient);
+  logger.debug(`Tools registered in ${Date.now() - toolsStart}ms`);
 
   // Register all resources (read operations)
+  const resourcesStart = Date.now();
   registerAllResources(server, apiClient);
+  logger.debug(`Resources registered in ${Date.now() - resourcesStart}ms`);
 
   // Connect via stdio transport
   const transport = new StdioServerTransport();
-  await server.connect(transport);
+  const connectTimeoutEnv = process.env.JOAN_MCP_CONNECT_TIMEOUT_MS;
+  const connectTimeoutMs = connectTimeoutEnv
+    ? Number.parseInt(connectTimeoutEnv, 10)
+    : 30000;
+  const safeConnectTimeoutMs = Number.isFinite(connectTimeoutMs) && connectTimeoutMs > 0
+    ? connectTimeoutMs
+    : 30000;
+  const connectStart = Date.now();
+  await withTimeout(
+    server.connect(transport),
+    safeConnectTimeoutMs,
+    `Joan MCP connection timeout after ${safeConnectTimeoutMs}ms`
+  );
+  logger.debug(`Transport connected in ${Date.now() - connectStart}ms`);
 
   const startupTime = Date.now() - serverStartTime;
-  logInfo(`Server ready (handshake complete in ${startupTime}ms)`);
+  logger.info(`Server ready (handshake complete in ${startupTime}ms)`);
 }
 
 // Export for CLI

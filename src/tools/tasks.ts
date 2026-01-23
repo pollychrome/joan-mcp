@@ -9,6 +9,7 @@ import { formatErrorForMcp } from '../utils/errors.js';
 import { formatTask, formatTaskInput, statusToBackend } from '../utils/converters.js';
 import { inferColumnFromStatus } from '../utils/column-mapper.js';
 import { ensureAuthenticated } from '../index.js';
+import { logger } from '../utils/logger.js';
 
 export function registerTaskTools(server: McpServer, client: JoanApiClient): void {
   // List Tasks (Read)
@@ -286,7 +287,7 @@ export function registerTaskTools(server: McpServer, client: JoanApiClient): voi
               await client.updateTask(input.task_id, { column_id: doneColumn.id });
               columnSynced = true;
               columnName = doneColumn.name;
-              console.log(
+              logger.info(
                 `[Joan MCP] Moved task #${task.task_number} to ${doneColumn.name} column`
               );
             }
@@ -369,19 +370,19 @@ export function registerTaskTools(server: McpServer, client: JoanApiClient): voi
 
                   if (inferredColumn) {
                     columnId = inferredColumn.id;
-                    console.log(
+                    logger.info(
                       `[Joan MCP] Auto-inferred column for task #${task.task_number}: ` +
                       `status=${update.status} → column=${inferredColumn.name}`
                     );
                   } else {
-                    console.warn(
+                    logger.warn(
                       `[Joan MCP] Could not infer column for task #${task.task_number} ` +
                       `with status=${update.status}. Column unchanged.`
                     );
                   }
                 }
               } catch (error) {
-                console.error(
+                logger.error(
                   `[Joan MCP] Failed to infer column for task ${update.task_id}:`,
                   error
                 );

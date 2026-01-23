@@ -249,6 +249,11 @@ npm run build
 |----------|-------------|---------|
 | `JOAN_AUTH_TOKEN` | JWT authentication token | (from login) |
 | `JOAN_API_URL` | API base URL | `https://joan-api.alexbbenson.workers.dev/api/v1` |
+| `JOAN_MCP_TIMEOUT_MS` | HTTP request timeout (ms) | `10000` |
+| `JOAN_MCP_CONNECT_TIMEOUT_MS` | MCP handshake timeout (ms) | `30000` |
+| `JOAN_MCP_SLOW_REQUEST_MS` | Log warnings for slow requests (ms) | (disabled) |
+| `JOAN_MCP_LOG_LEVEL` | Logging verbosity (`debug`, `info`, `warn`, `error`, `silent`) | `info` |
+| `JOAN_MCP_VERIFY_ON_STARTUP` | Skip background auth check when `false` | `true` |
 
 ## Security
 

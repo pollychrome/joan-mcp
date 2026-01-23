@@ -5,6 +5,8 @@
  * that require attention or configuration updates.
  */
 
+import { logger } from './logger.js';
+
 export interface ColumnSyncEvent {
   task_id: string;
   task_number: number;
@@ -57,12 +59,12 @@ export class ColumnSyncTelemetry {
 
     // Log to console based on event type
     if (event.inference_failed) {
-      console.error(
+      logger.error(
         `[Joan MCP] Column sync failed for task #${event.task_number}: ` +
         `status=${event.status_after}, column=${event.column_before}`
       );
     } else if (event.inferred) {
-      console.log(
+      logger.info(
         `[Joan MCP] Column synced for task #${event.task_number}: ` +
         `${event.column_before} → ${event.column_after}`
       );

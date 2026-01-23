@@ -9,6 +9,7 @@
  */
 
 import type { ProjectColumn } from '../client/types.js';
+import { logger } from './logger.js';
 
 /**
  * Common column name variations for each status
@@ -90,7 +91,7 @@ function findColumnByName(columns: ProjectColumn[], status: string): ProjectColu
   for (const col of columns) {
     const distance = levenshteinDistance(col.name.toLowerCase().trim(), normalizedStatus);
     if (distance <= 2) {
-      console.log(
+      logger.debug(
         `[Joan MCP] Fuzzy matched column '${col.name}' for status '${status}' (distance: ${distance})`
       );
       return col;
@@ -159,7 +160,7 @@ export function inferColumnFromStatus(
 ): ProjectColumn | null {
   if (columns.length === 0) {
     const error = `[Joan MCP] No columns available for status='${status}'`;
-    console.warn(error);
+    logger.warn(error);
     if (options.required) {
       throw new Error(`Cannot find column for status='${status}'. Project has no columns.`);
     }
@@ -176,7 +177,7 @@ export function inferColumnFromStatus(
 
   // No match found - log warning and optionally throw
   const availableColumns = columns.map(c => c.name).join(', ');
-  console.warn(
+  logger.warn(
     `[Joan MCP] Failed to infer column for status='${status}'. ` +
     `Available columns: ${availableColumns}`
   );
