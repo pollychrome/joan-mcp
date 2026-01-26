@@ -888,4 +888,94 @@ export class JoanApiClient {
       { tag_ids: tagIds }
     );
   }
+
+  // ============ Actionable Tasks (Workflow) ============
+
+  /**
+   * Get pre-computed priority queues of actionable tasks for a project.
+   * Returns queues, pipeline gate status, recovery diagnostics, and summary.
+   */
+  async getActionableTasks(projectId: string, params?: {
+    mode?: 'standard' | 'yolo';
+    include_payloads?: boolean;
+    include_recovery?: boolean;
+    stale_claim_minutes?: number;
+    stuck_state_minutes?: number;
+  }): Promise<ActionableTasksResponse> {
+    return this.request<ActionableTasksResponse>(
+      'GET',
+      `/projects/${projectId}/actionable-tasks`,
+      undefined,
+      params as Record<string, string | number | boolean | undefined>
+    );
+  }
+}
+
+// Actionable Tasks response types
+export interface ActionableTasksQueueItem {
+  task_id: string;
+  task_title: string;
+  priority: number;
+  mode: string;
+  handler: string;
+  handler_args: string[];
+  smart_payload?: Record<string, unknown>;
+}
+
+export interface ActionableTasksPipeline {
+  blocked: boolean;
+  blocking_task_id?: string;
+  blocking_task_title?: string;
+  blocking_reason?: string;
+  blocking_column?: string;
+}
+
+export interface ActionableTasksRecovery {
+  stale_claims: Array<{
+    task_id: string;
+    task_title: string;
+    claim_tag: string;
+    claim_age_minutes: number;
+    threshold_minutes: number;
+  }>;
+  anomalies: Array<{
+    task_id: string;
+    type: string;
+    stale_tags?: string[];
+    column?: string;
+  }>;
+  invalid_states: Array<{
+    task_id: string;
+    type: string;
+    tags: string[];
+    remediation: string;
+  }>;
+  stuck_states: Array<{
+    task_id: string;
+    state: string;
+    age_minutes: number;
+    threshold_minutes: number;
+  }>;
+}
+
+export interface ActionableTasksSummary {
+  total_actionable: number;
+  total_recovery_issues: number;
+  pipeline_blocked: boolean;
+  pending_human_action: number;
+  claimed_tasks: number;
+}
+
+export interface ActionableTasksResponse {
+  queues: {
+    ba: ActionableTasksQueueItem[];
+    architect: ActionableTasksQueueItem[];
+    dev: ActionableTasksQueueItem[];
+    reviewer: ActionableTasksQueueItem[];
+    ops: ActionableTasksQueueItem[];
+  };
+  pipeline: ActionableTasksPipeline;
+  recovery: ActionableTasksRecovery;
+  summary: ActionableTasksSummary;
+  computed_at: string;
 }

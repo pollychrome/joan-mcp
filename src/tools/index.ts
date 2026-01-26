@@ -13,6 +13,7 @@ import { registerCommentTools } from './comments.js';
 import { registerAttachmentTools } from './attachments.js';
 import { registerResourceTools } from './resources.js';
 import { registerProjectTagTools } from './project-tags.js';
+import { registerActionableTasksTools } from './actionable-tasks.js';
 
 /**
  * Register all tools with the MCP server
@@ -27,6 +28,7 @@ export function registerAllTools(server: McpServer, client: JoanApiClient): void
   registerAttachmentTools(server, client);
   registerResourceTools(server, client);
   registerProjectTagTools(server, client);
+  registerActionableTasksTools(server, client);
 }
 
 export {
@@ -39,4 +41,5 @@ export {
   registerAttachmentTools,
   registerResourceTools,
   registerProjectTagTools,
+  registerActionableTasksTools,
 };
